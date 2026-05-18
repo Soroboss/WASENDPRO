@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { compileMessage } from "@/lib/message";
 import { WhatsAppMessagePreview } from "@/components/campaigns/whatsapp-message-preview";
-import { openWhatsApp } from "@/lib/whatsapp";
+import { getWhatsAppPhoneError, openWhatsApp } from "@/lib/whatsapp";
 import { queueWhatsAppAttachments } from "@/lib/whatsapp-bridge";
 import { formatFileSize, getAttachmentKind } from "@/lib/attachments";
 import { exportCampaignReport } from "@/lib/excel";
@@ -89,9 +89,15 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
     const attachments = campaign.attachments ?? [];
     const hasAttachments = attachments.length > 0;
 
+    const phoneError = getWhatsAppPhoneError(phone);
+    if (phoneError) {
+      alert(phoneError);
+      return;
+    }
+
     const opened = openWhatsApp(phone, compiled, { useWeb: hasAttachments });
     if (!opened) {
-      alert("Numéro de téléphone invalide pour ce contact.");
+      alert("Impossible d'ouvrir WhatsApp pour ce contact.");
       return;
     }
 

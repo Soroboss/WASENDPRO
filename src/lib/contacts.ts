@@ -1,4 +1,4 @@
-import { isValidPhone, normalizeExcelPhone } from "@/lib/phone";
+import { isValidPhone, normalizePhoneForWhatsApp } from "@/lib/phone";
 import type { Contact, ImportedRow } from "@/types";
 
 /** Colonnes du modèle Excel (variables disponibles pour les messages). */
@@ -101,11 +101,11 @@ export function findPhoneFromRow(
 ): string {
   for (const h of headers) {
     if (isPhoneColumnKey(h)) {
-      return normalizeExcelPhone(row[h] ?? "");
+      return normalizePhoneForWhatsApp(row[h] ?? "");
     }
   }
   for (const h of headers) {
-    const digits = normalizeExcelPhone(row[h] ?? "");
+    const digits = normalizePhoneForWhatsApp(row[h] ?? "");
     if (isValidPhone(digits)) return digits;
   }
   return "";
@@ -152,7 +152,7 @@ export function rowToSnapshot(
     if (!key) continue;
     let value = String(row[h] ?? "").trim();
     if (isPhoneColumnKey(key)) {
-      value = normalizeExcelPhone(value);
+      value = normalizePhoneForWhatsApp(value);
     }
     data[key] = value;
   }

@@ -5,6 +5,7 @@ import {
   prepareImportRows,
   rowToSnapshot,
 } from "@/lib/contacts";
+import { normalizePhoneForWhatsApp } from "@/lib/phone";
 import type {
   Campaign,
   CampaignAttachment,
@@ -168,7 +169,10 @@ export async function updateContact(
   id: string,
   input: UpdateContactInput
 ): Promise<Contact> {
-  const phone = input.phone?.replace(/\D/g, "");
+  const phone =
+    input.phone !== undefined
+      ? normalizePhoneForWhatsApp(input.phone)
+      : undefined;
   if (phone !== undefined && !phone) {
     throw new Error("Le numéro de téléphone est requis.");
   }
