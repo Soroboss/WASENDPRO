@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConnectionStatus } from "@/components/dashboard/connection-status";
 import {
   Settings,
   FileSpreadsheet,
   MessageSquare,
   Shield,
-  ExternalLink,
 } from "lucide-react";
 
 const instructions = [
@@ -47,44 +47,11 @@ export default function SettingsPage() {
           Paramètres & Instructions
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Guide d&apos;utilisation et configuration InsForge
+          État du système et guide d&apos;utilisation
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Configuration InsForge</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <p>
-            Pour connecter la base de données PostgreSQL, ajoutez dans{" "}
-            <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
-              .env.local
-            </code>{" "}
-            :
-          </p>
-          <pre className="bg-muted rounded-lg p-4 text-xs font-mono overflow-x-auto">
-{`NEXT_PUBLIC_INSFORGE_URL=https://votre-app.insforge.app
-NEXT_PUBLIC_INSFORGE_ANON_KEY=votre_cle_anon`}
-          </pre>
-          <p>
-            Schéma SQL requis : tables{" "}
-            <code className="text-xs">contacts</code>,{" "}
-            <code className="text-xs">campaigns</code>,{" "}
-            <code className="text-xs">campaign_logs</code>. Voir{" "}
-            <code className="text-xs">supabase/schema.sql</code> dans le projet.
-          </p>
-          <a
-            href="https://insforge.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-whatsapp hover:underline"
-          >
-            Documentation InsForge
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </CardContent>
-      </Card>
+      <ConnectionStatus />
 
       <div className="grid gap-4">
         {instructions.map((section) => (
