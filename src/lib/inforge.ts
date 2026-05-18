@@ -5,6 +5,7 @@ import {
 } from "@/lib/contacts";
 import type {
   Campaign,
+  CampaignAttachment,
   CampaignLog,
   CampaignLogStatus,
   Contact,
@@ -12,6 +13,24 @@ import type {
   ImportedRow,
   UpdateContactInput,
 } from "@/types";
+
+function normalizeCampaign(row: Record<string, unknown>): Campaign {
+  const raw = row.attachments;
+  let attachments: CampaignAttachment[] = [];
+  if (Array.isArray(raw)) {
+    attachments = raw as CampaignAttachment[];
+  } else if (typeof raw === "string") {
+    try {
+      attachments = JSON.parse(raw) as CampaignAttachment[];
+    } catch {
+      attachments = [];
+    }
+  }
+  return {
+    ...(row as unknown as Campaign),
+    attachments,
+  };
+}
 
 const STORAGE_KEY = "biswasendpro_data";
 const LEGACY_STORAGE_KEY = "wasendpro_data";
@@ -211,7 +230,9 @@ export async function getCampaigns(): Promise<Campaign[]> {
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return (data ?? []) as Campaign[];
+    return (data ?? []).map((row) =>
+      normalizeCampaign(row as Record<string, unknown>)
+    );
   }
   return readLocalStore().campaigns;
 }
@@ -225,7 +246,9 @@ export async function getCampaign(id: string): Promise<Campaign | null> {
       .eq("id", id)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return data as Campaign | null;
+    return data
+      ? normalizeCampaign(data as Record<string, unknown>)
+      : null;
   }
   return readLocalStore().campaigns.find((c) => c.id === id) ?? null;
 }
@@ -243,6 +266,7 @@ export async function createCampaign(
           name: input.name,
           template_message: input.template_message,
           scheduled_date: input.scheduled_date ?? null,
+          attachments: input.attachments ?? [],
         },
       ])
       .select()
@@ -259,7 +283,7 @@ export async function createCampaign(
         },
       ]);
     }
-    return campaign as Campaign;
+    return normalizeCampaign(campaign as Record<string, unknown>);
   }
 
   const store = readLocalStore();
@@ -268,6 +292,7 @@ export async function createCampaign(
     name: input.name,
     template_message: input.template_message,
     scheduled_date: input.scheduled_date ?? null,
+    attachments: input.attachments ?? [],
     created_at: new Date().toISOString(),
   };
   store.campaigns.push(campaign);

@@ -31,8 +31,9 @@ const instructions = [
     icon: Shield,
     title: "Envoyer en sécurité",
     steps: [
+      "Ajoutez des pièces jointes (JPEG, PDF, PPT, audio) à la création si besoin.",
       "Ouvrez la campagne et cliquez « Envoyer » contact par contact.",
-      "WhatsApp s'ouvre avec le message pré-rempli.",
+      "Avec pièces jointes : WhatsApp Web s'ouvre et l'extension les ajoute.",
       "Une fois envoyé, le bouton est grisé — impossible d'envoyer deux fois (anti-doublon).",
       "Exportez le rapport Excel à tout moment pour suivre les statuts.",
     ],

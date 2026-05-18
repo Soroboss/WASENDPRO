@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   name TEXT NOT NULL,
   template_message TEXT NOT NULL,
   scheduled_date TIMESTAMPTZ,
+  attachments JSONB NOT NULL DEFAULT '[]',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -10,8 +10,20 @@ export function buildWhatsAppUrl(phone: string, message: string): string {
   return `https://wa.me/${numero}?text=${text}`;
 }
 
-/** Ouvre WhatsApp dans un nouvel onglet. */
-export function openWhatsApp(phone: string, message: string): void {
-  const url = buildWhatsAppUrl(phone, message);
+export function buildWhatsAppWebUrl(phone: string, message: string): string {
+  const numero = normalizePhone(phone);
+  const text = encodeURIComponent(message);
+  return `https://web.whatsapp.com/send?phone=${numero}&text=${text}`;
+}
+
+/** Ouvre WhatsApp (Web si pièces jointes, sinon wa.me). */
+export function openWhatsApp(
+  phone: string,
+  message: string,
+  options?: { useWeb?: boolean }
+): void {
+  const url = options?.useWeb
+    ? buildWhatsAppWebUrl(phone, message)
+    : buildWhatsAppUrl(phone, message);
   window.open(url, "_blank", "noopener,noreferrer");
 }

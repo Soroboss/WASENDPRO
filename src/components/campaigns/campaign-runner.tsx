@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { compileMessage } from "@/lib/message";
 import { openWhatsApp } from "@/lib/whatsapp";
+import { queueWhatsAppAttachments } from "@/lib/whatsapp-bridge";
+import { formatFileSize, getAttachmentKind } from "@/lib/attachments";
 import { exportCampaignReport } from "@/lib/excel";
 import {
   getCampaign,
@@ -34,6 +36,7 @@ import {
   MessageSquare,
   ArrowLeft,
   Megaphone,
+  Paperclip,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -81,7 +84,13 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
     const phone = log.contact.phone;
 
     setSendingId(log.contact_id);
-    openWhatsApp(phone, compiled);
+    const attachments = campaign.attachments ?? [];
+    const hasAttachments = attachments.length > 0;
+
+    if (hasAttachments) {
+      await queueWhatsAppAttachments(phone, compiled, attachments);
+    }
+    openWhatsApp(phone, compiled, { useWeb: hasAttachments });
 
     try {
       await markContactAsSent(campaign.id, log.contact_id);
@@ -189,6 +198,34 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
           />
         </div>
       </div>
+
+      {(campaign.attachments?.length ?? 0) > 0 && (
+        <Card className="card-elevated border-neon/15">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Paperclip className="h-4 w-4 text-neon" />
+              Pièces jointes ({campaign.attachments.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Extension Chrome requise — ouvre WhatsApp Web et tente d&apos;ajouter
+              les fichiers automatiquement.
+            </p>
+            <ul className="flex flex-wrap gap-2">
+              {campaign.attachments.map((att) => (
+                <li
+                  key={att.id}
+                  className="text-xs rounded-lg border border-white/10 bg-muted/40 px-3 py-1.5"
+                >
+                  {att.name} · {formatFileSize(att.size)} ·{" "}
+                  {getAttachmentKind(att.mimeType)}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="card-elevated">
         <CardHeader className="pb-3">

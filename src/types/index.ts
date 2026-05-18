@@ -8,11 +8,21 @@ export interface Contact {
   created_at: string;
 }
 
+export interface CampaignAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  url?: string;
+  storageKey?: string;
+}
+
 export interface Campaign {
   id: string;
   name: string;
   template_message: string;
   scheduled_date: string | null;
+  attachments: CampaignAttachment[];
   created_at: string;
 }
 
@@ -40,6 +50,7 @@ export interface CreateCampaignInput {
   scheduled_date?: string | null;
   importedRows: ImportedRow[];
   columnHeaders: string[];
+  attachments?: CampaignAttachment[];
 }
 
 export interface UpdateContactInput {

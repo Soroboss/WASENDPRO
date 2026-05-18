@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "BISWasend Pro — Import Excel",
-  "version": "1.0.0",
-  "description": "Charge un fichier Excel depuis Chrome et l'envoie au tableau de bord WASENDPRO.",
+  "name": "BISWasend Pro",
+  "version": "1.1.0",
+  "description": "Import Excel vers WASENDPRO et pièces jointes automatiques sur WhatsApp Web.",
   "permissions": ["storage", "tabs"],
   "host_permissions": [
     "https://wasendpro.vercel.app/*",
@@ -27,6 +27,11 @@
         "http://127.0.0.1:3000/*"
       ],
       "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["whatsapp-content.js"],
       "run_at": "document_idle"
     }
   ]

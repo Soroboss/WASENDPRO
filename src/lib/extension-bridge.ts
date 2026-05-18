@@ -1,6 +1,19 @@
 import type { ImportedRow } from "@/types";
 
 export const EXTENSION_IMPORT_EVENT = "wasendpro:import-excel";
+export const WHATSAPP_SEND_EVENT = "wasendpro:whatsapp-send";
+
+export interface WhatsAppSendAttachment {
+  name: string;
+  mimeType: string;
+  base64: string;
+}
+
+export interface WhatsAppSendPayload {
+  phone: string;
+  message: string;
+  attachments: WhatsAppSendAttachment[];
+}
 
 export interface ExtensionImportPayload {
   headers: string[];

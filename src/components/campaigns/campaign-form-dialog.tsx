@@ -15,6 +15,8 @@ import { getMessageVariables } from "@/lib/contacts";
 import { downloadExcelTemplate, parseExcelFile } from "@/lib/excel";
 import { createCampaign } from "@/lib/inforge";
 import { compileMessage } from "@/lib/message";
+import { uploadCampaignAttachments } from "@/lib/upload-campaign-attachments";
+import { CampaignAttachmentsField } from "@/components/campaigns/campaign-attachments-field";
 import type { ExtensionImportPayload } from "@/lib/extension-bridge";
 import type { ImportedRow } from "@/types";
 import {
@@ -51,6 +53,7 @@ export function CampaignFormDialog({
   const [message, setMessage] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<ImportedRow[]>([]);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +63,7 @@ export function CampaignFormDialog({
     setMessage("");
     setHeaders([]);
     setRows([]);
+    setAttachmentFiles([]);
     setError(null);
   };
 
@@ -110,12 +114,18 @@ export function CampaignFormDialog({
     setLoading(true);
     setError(null);
     try {
+      const attachments =
+        attachmentFiles.length > 0
+          ? await uploadCampaignAttachments(attachmentFiles)
+          : [];
+
       await createCampaign({
         name: name.trim(),
         template_message: message,
         scheduled_date: scheduledDate || null,
         importedRows: rows,
         columnHeaders: headers,
+        attachments,
       });
       reset();
       onOpenChange(false);
@@ -242,6 +252,12 @@ export function CampaignFormDialog({
               </div>
             )}
           </div>
+
+          <CampaignAttachmentsField
+            files={attachmentFiles}
+            onChange={setAttachmentFiles}
+            onError={setError}
+          />
 
           <MessageEditor
             value={message}
