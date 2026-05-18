@@ -6,9 +6,13 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "WA Send Pro — Campagnes WhatsApp Marketing",
+  title: "BISWasend Pro — Campagnes WhatsApp Marketing",
   description:
     "Gérez vos campagnes marketing WhatsApp avec import Excel, variables dynamiques et envoi sécurisé via wa.me.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

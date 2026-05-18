@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LogoFull } from "@/components/brand/logo";
 import { ArrowRight, MessageCircle, Shield, Sparkles } from "lucide-react";
 
 export function Hero() {
@@ -20,6 +21,15 @@ export function Hero() {
       </motion.div>
 
       <div className="container mx-auto px-4 text-center max-w-4xl">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="flex justify-center mb-8"
+        >
+          <LogoFull height={120} priority className="drop-shadow-lg mx-auto" />
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

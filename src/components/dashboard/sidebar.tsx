@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { LogoFull } from "@/components/brand/logo";
 import {
   Megaphone,
   BookUser,
   Settings,
-  MessageCircle,
   ArrowLeft,
 } from "lucide-react";
 
@@ -38,18 +38,8 @@ export function DashboardSidebar() {
 
   return (
     <aside className="flex h-full w-[260px] flex-col border-r border-sidebar-border bg-sidebar shadow-soft">
-      <div className="flex h-[72px] items-center gap-3 border-b border-sidebar-border px-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-whatsapp to-whatsapp-dark shadow-glow">
-          <MessageCircle className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <p className="font-semibold text-sm leading-tight tracking-tight">
-            WA Send Pro
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Campagnes WhatsApp
-          </p>
-        </div>
+      <div className="flex min-h-[88px] items-center justify-center border-b border-sidebar-border px-4 py-4">
+        <LogoFull href="/dashboard" height={56} />
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
