@@ -1,17 +1,26 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "BISWasend Pro — Campagnes WhatsApp Marketing",
-  description:
-    "Gérez vos campagnes marketing WhatsApp avec import Excel, variables dynamiques et envoi sécurisé via wa.me.",
+  title: {
+    default: `${APP_NAME} — ${APP_TAGLINE}`,
+    template: `%s | ${APP_NAME}`,
+  },
+  description: APP_DESCRIPTION,
+  applicationName: APP_NAME,
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",
+  },
+  openGraph: {
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    siteName: APP_NAME,
   },
 };
 

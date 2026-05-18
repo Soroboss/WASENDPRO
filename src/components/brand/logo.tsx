@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/brand";
 
 const LOGO_SRC = "/logo.png";
 
@@ -27,7 +28,7 @@ export function Logo({ size = "md", className, href, priority }: LogoProps) {
   const image = (
     <Image
       src={LOGO_SRC}
-      alt="BISWasend Pro"
+      alt={APP_NAME}
       width={px}
       height={px}
       priority={priority}
@@ -61,7 +62,7 @@ export function LogoFull({
   const image = (
     <Image
       src={LOGO_SRC}
-      alt="BISWasend Pro"
+      alt={APP_NAME}
       width={Math.round(height * 2.4)}
       height={height}
       priority={priority}

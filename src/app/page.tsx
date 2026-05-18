@@ -3,6 +3,7 @@ import { Hero } from "@/components/landing/hero";
 import { Features } from "@/components/landing/features";
 import { buttonVariants } from "@/components/ui/button";
 import { LogoFull } from "@/components/brand/logo";
+import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 export default function HomePage() {
@@ -27,7 +28,7 @@ export default function HomePage() {
 
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
         <LogoFull href="/" height={36} className="mx-auto mb-3 opacity-90" />
-        <p>© {new Date().getFullYear()} BISWasend Pro — Campagnes WhatsApp marketing</p>
+        <p>© {new Date().getFullYear()} {APP_NAME} — {APP_TAGLINE}</p>
       </footer>
     </div>
   );

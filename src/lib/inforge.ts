@@ -8,7 +8,8 @@ import type {
   ImportedRow,
 } from "@/types";
 
-const STORAGE_KEY = "wasendpro_data";
+const STORAGE_KEY = "biswasendpro_data";
+const LEGACY_STORAGE_KEY = "wasendpro_data";
 
 interface LocalStore {
   contacts: Contact[];
@@ -40,7 +41,14 @@ function readLocalStore(): LocalStore {
     return { contacts: [], campaigns: [], campaign_logs: [] };
   }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (raw) {
+        localStorage.setItem(STORAGE_KEY, raw);
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+    }
     if (!raw) return { contacts: [], campaigns: [], campaign_logs: [] };
     return JSON.parse(raw) as LocalStore;
   } catch {

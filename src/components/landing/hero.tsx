@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LogoFull } from "@/components/brand/logo";
+import { APP_NAME } from "@/lib/brand";
 import { ArrowRight, MessageCircle, Shield, Sparkles } from "lucide-react";
 
 export function Hero() {
@@ -37,7 +38,7 @@ export function Hero() {
           className="inline-flex items-center gap-2 rounded-full border bg-background/80 backdrop-blur px-4 py-1.5 text-sm mb-8"
         >
           <Sparkles className="h-4 w-4 text-whatsapp" />
-          Campagnes WhatsApp professionnelles
+          {APP_NAME}
         </motion.div>
 
         <motion.h1

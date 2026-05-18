@@ -1,4 +1,4 @@
--- Schéma WA Send Pro pour InsForge / PostgreSQL
+-- Schéma BISWasend Pro pour InsForge / PostgreSQL
 
 CREATE TABLE IF NOT EXISTS contacts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
