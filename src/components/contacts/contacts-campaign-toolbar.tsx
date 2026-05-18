@@ -131,9 +131,10 @@ export function ContactsCampaignToolbar({
         </motion.div>
       </motion.div>
 
-      <Badge variant="outline" className="rounded-md font-normal">
-        {visibleCount} entrée{visibleCount !== 1 ? "s" : ""} affichée
-        {visibleCount !== 1 ? "s" : ""}
+      <Badge variant="outline" className="rounded-md font-normal tabular-nums">
+        {visibleCount === 1
+          ? "1 ligne visible"
+          : `${visibleCount} lignes visibles`}
       </Badge>
     </motion.div>
   );

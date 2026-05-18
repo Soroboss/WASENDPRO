@@ -127,15 +127,33 @@ export function ContactsByCampaignView({
                           i % 2 === 1 && "bg-muted/10"
                         )}
                       >
-                        <TableCell className="font-medium">
-                          {contact.name ?? rowData?.["Nom"] ?? (
-                            <span className="text-muted-foreground italic font-normal">
-                              Sans nom
-                            </span>
-                          )}
+                        <TableCell className="font-medium align-middle max-w-[200px]">
+                          <span className="block truncate">
+                            {(() => {
+                              const raw =
+                                contact.name?.trim() ||
+                                rowData?.["Nom"]?.trim() ||
+                                "";
+                              const phoneDigits = contact.phone.replace(
+                                /\D/g,
+                                ""
+                              );
+                              if (
+                                raw &&
+                                raw.replace(/\D/g, "") !== phoneDigits
+                              ) {
+                                return raw;
+                              }
+                              return (
+                                <span className="text-muted-foreground italic font-normal">
+                                  Sans nom
+                                </span>
+                              );
+                            })()}
+                          </span>
                         </TableCell>
-                        <TableCell>
-                          <code className="font-mono text-sm text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-md">
+                        <TableCell className="align-middle">
+                          <code className="font-mono text-sm text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-md whitespace-nowrap">
                             {contact.phone}
                           </code>
                         </TableCell>

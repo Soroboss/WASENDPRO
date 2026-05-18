@@ -9,7 +9,10 @@ import {
   runPhoneRepairOnce,
 } from "@/lib/inforge";
 import { downloadExcelTemplate, exportContactsToExcel } from "@/lib/excel";
-import { getCustomFieldKeys } from "@/lib/contacts";
+import {
+  deduplicateContactsByPhone,
+  getDisplayCustomKeys,
+} from "@/lib/contacts";
 import {
   filterAndSortContacts,
   filterCampaignGroups,
@@ -77,7 +80,7 @@ export default function ContactsPage() {
         getContactsSorted(),
         getCampaignContactGroups(),
       ]);
-      setContacts(sorted);
+      setContacts(deduplicateContactsByPhone(sorted));
       setCampaignGroups(groups);
       if (repaired > 0) {
         console.info(
@@ -97,7 +100,10 @@ export default function ContactsPage() {
     setSelectedIds(new Set());
   }, [filters, tab]);
 
-  const customKeys = useMemo(() => getCustomFieldKeys(contacts), [contacts]);
+  const customKeys = useMemo(
+    () => getDisplayCustomKeys(contacts),
+    [contacts]
+  );
   const dialCounts = useMemo(() => getDialCounts(contacts), [contacts]);
 
   const filteredContacts = useMemo(
@@ -161,7 +167,9 @@ export default function ContactsPage() {
   };
 
   const handleBulkCopy = async () => {
-    const phones = selectedContacts.map((c) => c.phone).join("\n");
+    const phones = Array.from(
+      new Set(selectedContacts.map((c) => c.phone))
+    ).join("\n");
     try {
       await navigator.clipboard.writeText(phones);
     } catch {
@@ -232,7 +240,7 @@ export default function ContactsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
       <PageHeader
         title="Annuaire"
         description="Gérez vos contacts, filtrez et lancez des actions groupées"

@@ -39,17 +39,75 @@ export function getMessageVariables(headers: string[]): string[] {
   return headers.filter((h) => h.trim().length > 0);
 }
 
-/** Toutes les clés personnalisées présentes dans l'annuaire (hors téléphone). */
+/** Toutes les clés personnalisées présentes dans l'annuaire (hors téléphone / nom). */
 export function getCustomFieldKeys(contacts: Contact[]): string[] {
   const keys = new Set<string>();
   for (const contact of contacts) {
     for (const key of Object.keys(contact.custom_data ?? {})) {
-      if (!isPhoneColumnKey(key) && !isNameColumnKey(key)) {
+      const k = key.trim();
+      if (k && !isPhoneColumnKey(k) && !isNameColumnKey(k)) {
         keys.add(key);
       }
     }
   }
   return Array.from(keys).sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+/** Colonnes à afficher : exclut celles qui recopient le nom ou le téléphone. */
+export function getDisplayCustomKeys(contacts: Contact[]): string[] {
+  return getCustomFieldKeys(contacts).filter((key) =>
+    contacts.some((c) => {
+      const v = (getContactFieldValue(c, key) ?? "").trim();
+      if (!v) return false;
+      const phoneDigits = c.phone.replace(/\D/g, "");
+      if (phoneDigits && v.replace(/\D/g, "") === phoneDigits) return false;
+      if (c.name?.trim() && v === c.name.trim()) return false;
+      return true;
+    })
+  );
+}
+
+/** Valeur cellule sans répéter nom / téléphone déjà affichés ailleurs. */
+export function getDisplayCellValue(contact: Contact, key: string): string {
+  const value = (getContactFieldValue(contact, key) ?? "").trim();
+  if (!value) return "";
+  const phoneDigits = contact.phone.replace(/\D/g, "");
+  if (phoneDigits && value.replace(/\D/g, "") === phoneDigits) return "";
+  if (contact.name?.trim() && value === contact.name.trim()) return "";
+  return value;
+}
+
+/** Un seul contact par numéro (garde le plus complet / le plus récent). */
+export function deduplicateContactsByPhone(contacts: Contact[]): Contact[] {
+  const byPhone = new Map<string, Contact>();
+
+  for (const contact of contacts) {
+    const phone = contact.phone.replace(/\D/g, "");
+    if (!phone) continue;
+
+    const existing = byPhone.get(phone);
+    if (!existing) {
+      byPhone.set(phone, contact);
+      continue;
+    }
+
+    const score = (c: Contact) =>
+      (c.name?.trim() ? 2 : 0) +
+      (Object.keys(c.custom_data ?? {}).length > 0 ? 1 : 0);
+
+    const keep =
+      score(contact) > score(existing) ||
+      (score(contact) === score(existing) &&
+        new Date(contact.created_at) > new Date(existing.created_at))
+        ? contact
+        : existing;
+
+    byPhone.set(phone, keep);
+  }
+
+  return Array.from(byPhone.values()).sort((a, b) =>
+    a.phone.localeCompare(b.phone, undefined, { numeric: true })
+  );
 }
 
 export function getContactFieldValue(

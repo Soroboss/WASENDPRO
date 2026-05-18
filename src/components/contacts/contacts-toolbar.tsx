@@ -185,9 +185,9 @@ export function ContactsToolbar({
 
         <motion.div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/40">
           <motion.div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <Badge variant="outline" className="rounded-md font-normal">
-              {filteredCount} / {totalCount} affiché
-              {filteredCount !== 1 ? "s" : ""}
+            <Badge variant="outline" className="rounded-md font-normal tabular-nums">
+              {filteredCount} sur {totalCount} contact
+              {totalCount !== 1 ? "s" : ""}
             </Badge>
             <Button
               variant="ghost"

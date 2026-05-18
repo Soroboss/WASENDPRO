@@ -101,6 +101,14 @@ export function filterCampaignGroups(
           );
         });
       }
+
+      const seenContacts = new Set<string>();
+      entries = entries.filter((e) => {
+        if (seenContacts.has(e.contact.id)) return false;
+        seenContacts.add(e.contact.id);
+        return true;
+      });
+
       return { ...g, entries };
     })
     .filter((g) => g.entries.length > 0);
