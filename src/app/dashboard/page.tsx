@@ -7,8 +7,10 @@ import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { CampaignFormDialog } from "@/components/campaigns/campaign-form-dialog";
-import { getCampaigns, deleteCampaign, isUsingLocalStorage } from "@/lib/inforge";
+import { ConnectionStatus } from "@/components/dashboard/connection-status";
+import { getCampaigns, deleteCampaign } from "@/lib/inforge";
 import type { Campaign } from "@/types";
 import {
   Plus,
@@ -16,7 +18,7 @@ import {
   Trash2,
   ChevronRight,
   Loader2,
-  Database,
+  Calendar,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -47,52 +49,44 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Campagnes</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Créez et gérez vos campagnes WhatsApp
-          </p>
-        </div>
-        <Button
-          onClick={() => setDialogOpen(true)}
-          className="bg-whatsapp hover:bg-whatsapp-dark text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvelle campagne
-        </Button>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Campagnes"
+        description="Créez et gérez vos envois WhatsApp personnalisés"
+        icon={Megaphone}
+        action={
+          <Button
+            onClick={() => setDialogOpen(true)}
+            className="btn-whatsapp rounded-xl h-10 px-5"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvelle campagne
+          </Button>
+        }
+      />
 
-      {isUsingLocalStorage() && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-          <Database className="h-4 w-4 shrink-0" />
-          Mode démo : données stockées en local. Configurez{" "}
-          <code className="text-xs bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
-            NEXT_PUBLIC_INSFORGE_URL
-          </code>{" "}
-          pour connecter InsForge.
-        </div>
-      )}
+      <ConnectionStatus />
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex justify-center py-24">
+          <Loader2 className="h-9 w-9 animate-spin text-muted-foreground/60" />
         </div>
       ) : campaigns.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Megaphone className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <p className="font-medium">Aucune campagne</p>
-            <p className="text-sm text-muted-foreground mt-1 mb-6">
-              Créez votre première campagne pour commencer.
+        <Card className="card-elevated border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent mb-5">
+              <Megaphone className="h-8 w-8 text-[hsl(142,70%,38%)]" />
+            </div>
+            <p className="font-semibold text-lg">Aucune campagne</p>
+            <p className="text-sm text-muted-foreground mt-2 mb-8 max-w-sm">
+              Lancez votre première campagne en important vos contacts Excel.
             </p>
             <Button
               onClick={() => setDialogOpen(true)}
-              className="bg-whatsapp hover:bg-whatsapp-dark text-white"
+              className="btn-whatsapp rounded-xl"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Nouvelle campagne
+              Créer une campagne
             </Button>
           </CardContent>
         </Card>
@@ -102,39 +96,46 @@ export default function DashboardPage() {
             <Link
               key={campaign.id}
               href={`/dashboard/campaigns/${campaign.id}`}
+              className="block group"
             >
-              <Card className="group hover:shadow-md transition-all cursor-pointer h-full">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-base group-hover:text-whatsapp transition-colors">
+              <Card className="card-elevated h-full cursor-pointer group-hover:border-[hsl(142,70%,45%)]/30">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-base font-semibold group-hover:text-[hsl(142,70%,38%)] transition-colors line-clamp-1">
                       {campaign.name}
                     </CardTitle>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
                       onClick={(e) => handleDelete(campaign.id, e)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground line-clamp-2 font-mono mb-3">
+                <CardContent className="space-y-4">
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed bg-muted/50 rounded-lg p-3 font-mono">
                     {campaign.template_message}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
                       {format(new Date(campaign.created_at), "dd MMM yyyy", {
                         locale: fr,
                       })}
                     </span>
-                    {campaign.scheduled_date && (
-                      <Badge variant="outline" className="text-xs">
-                        Programmée
-                      </Badge>
-                    )}
-                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-whatsapp transition-colors" />
+                    <div className="flex items-center gap-2">
+                      {campaign.scheduled_date && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] rounded-md border-[hsl(142,70%,45%)]/30 text-[hsl(142,70%,38%)]"
+                        >
+                          Programmée
+                        </Badge>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(142,70%,38%)] group-hover:translate-x-0.5 transition-all" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

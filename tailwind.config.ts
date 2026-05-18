@@ -54,8 +54,8 @@ const config: Config = {
           ring: "hsl(var(--sidebar-ring))",
         },
         whatsapp: {
-          DEFAULT: "#25D366",
-          dark: "#128C7E",
+          DEFAULT: "hsl(142, 70%, 45%)",
+          dark: "hsl(152, 76%, 32%)",
         },
       },
       borderRadius: {
@@ -65,6 +65,10 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+      },
+      boxShadow: {
+        soft: "0 2px 8px -2px rgba(0,0,0,0.06), 0 4px 16px -4px rgba(0,0,0,0.08)",
+        glow: "0 0 24px -4px hsl(142 70% 45% / 0.25)",
       },
     },
   },

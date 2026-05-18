@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConnectionStatus } from "@/components/dashboard/connection-status";
+import { PageHeader } from "@/components/ui/page-header";
 import {
-  Settings,
+  BookOpen,
   FileSpreadsheet,
   MessageSquare,
   Shield,
@@ -10,7 +11,7 @@ import {
 const instructions = [
   {
     icon: FileSpreadsheet,
-    title: "1. Préparer vos contacts",
+    title: "Préparer vos contacts",
     steps: [
       "Téléchargez le modèle Excel depuis le formulaire de nouvelle campagne.",
       "Remplissez les colonnes : Nom, Téléphone, Entreprise (ou vos propres colonnes).",
@@ -19,7 +20,7 @@ const instructions = [
   },
   {
     icon: MessageSquare,
-    title: "2. Rédiger le message",
+    title: "Rédiger le message",
     steps: [
       "Importez votre fichier Excel — les colonnes deviennent des variables {Nom}, etc.",
       "Cliquez sur une variable pour l'insérer, ou surlignez du texte puis cliquez pour remplacer.",
@@ -28,10 +29,10 @@ const instructions = [
   },
   {
     icon: Shield,
-    title: "3. Envoyer en sécurité",
+    title: "Envoyer en sécurité",
     steps: [
       "Ouvrez la campagne et cliquez « Envoyer » contact par contact.",
-      "WhatsApp s'ouvre via wa.me avec le message pré-rempli.",
+      "WhatsApp s'ouvre avec le message pré-rempli.",
       "Une fois envoyé, le bouton est grisé — impossible d'envoyer deux fois (anti-doublon).",
       "Exportez le rapport Excel à tout moment pour suivre les statuts.",
     ],
@@ -40,32 +41,39 @@ const instructions = [
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Settings className="h-6 w-6" />
-          Paramètres & Instructions
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          État du système et guide d&apos;utilisation
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Guide d'utilisation"
+        description="Tout ce qu'il faut savoir pour lancer vos campagnes"
+        icon={BookOpen}
+      />
 
       <ConnectionStatus />
 
       <div className="grid gap-4">
-        {instructions.map((section) => (
-          <Card key={section.title}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <section.icon className="h-5 w-5 text-whatsapp" />
+        {instructions.map((section, index) => (
+          <Card key={section.title} className="card-elevated overflow-hidden">
+            <CardHeader className="pb-3 bg-gradient-to-r from-accent/50 to-transparent">
+              <CardTitle className="text-base flex items-center gap-3 font-semibold">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-background shadow-sm text-sm font-bold text-[hsl(142,70%,38%)]">
+                  {index + 1}
+                </span>
+                <section.icon className="h-5 w-5 text-[hsl(142,70%,38%)]" />
                 {section.title}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+            <CardContent className="pt-2">
+              <ol className="space-y-3">
                 {section.steps.map((step, i) => (
-                  <li key={i}>{step}</li>
+                  <li
+                    key={i}
+                    className="flex gap-3 text-sm text-muted-foreground leading-relaxed"
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-foreground">
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
                 ))}
               </ol>
             </CardContent>

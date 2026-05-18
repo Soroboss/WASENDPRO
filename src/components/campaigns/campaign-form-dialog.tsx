@@ -6,7 +6,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +20,10 @@ import {
   Upload,
   Loader2,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface CampaignFormDialogProps {
   open: boolean;
@@ -113,68 +114,84 @@ export function CampaignFormDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-whatsapp" />
+      <DialogContent className="dialog-premium max-h-[92vh] sm:max-w-2xl" showCloseButton>
+        <DialogHeader className="dialog-premium-header">
+          <DialogTitle className="flex items-center gap-3 text-lg">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent">
+              <FileSpreadsheet className="h-5 w-5 text-[hsl(142,70%,38%)]" />
+            </span>
             Nouvelle campagne
           </DialogTitle>
+          <p className="text-sm text-muted-foreground font-normal">
+            Importez vos contacts et personnalisez votre message
+          </p>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className="dialog-premium-body">
+          <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="campaign-name">Nom de la campagne</Label>
+              <Label htmlFor="campaign-name" className="section-label">
+                Nom
+              </Label>
               <Input
                 id="campaign-name"
+                className="input-soft h-10"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Promo été 2026"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="scheduled">Programmation (optionnel)</Label>
+              <Label htmlFor="scheduled" className="section-label">
+                Programmation
+              </Label>
               <Input
                 id="scheduled"
                 type="datetime-local"
+                className="input-soft h-10"
                 value={scheduledDate}
                 onChange={(e) => setScheduledDate(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => downloadExcelTemplate()}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Télécharger le modèle Excel
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Importer Excel
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={handleImport}
-            />
-            {rows.length > 0 && (
-              <Badge variant="secondary" className="gap-1">
-                <Users className="h-3 w-3" />
-                {rows.length} contact{rows.length > 1 ? "s" : ""}
-              </Badge>
-            )}
+          <div className="rounded-xl border border-dashed border-border/80 bg-muted/30 p-4 space-y-3">
+            <p className="section-label">Contacts</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-lg bg-background"
+                onClick={() => downloadExcelTemplate()}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Modèle Excel
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-lg bg-background"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Importer
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handleImport}
+              />
+              {rows.length > 0 && (
+                <Badge className="gap-1.5 bg-accent text-accent-foreground border-0">
+                  <Users className="h-3.5 w-3.5" />
+                  {rows.length} contact{rows.length > 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
           </div>
 
           <MessageEditor
@@ -184,19 +201,35 @@ export function CampaignFormDialog({
           />
 
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-destructive rounded-lg bg-destructive/10 px-3 py-2">
+              {error}
+            </p>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="dialog-premium-footer">
+          <Button
+            variant="outline"
+            className="rounded-lg"
+            onClick={() => onOpenChange(false)}
+          >
             Annuler
           </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Créer la campagne
+          <Button
+            onClick={handleSubmit}
+            disabled={loading}
+            className={cn("btn-whatsapp rounded-lg min-w-[140px]")}
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Créer la campagne
+              </>
+            )}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

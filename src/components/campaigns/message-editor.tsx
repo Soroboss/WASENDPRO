@@ -67,7 +67,9 @@ export function MessageEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <Label htmlFor="message">Message de la campagne</Label>
+        <Label htmlFor="message" className="section-label">
+          Message
+        </Label>
         {variables.length > 0 && (
           <Select onValueChange={(v) => v && insertVariable(String(v))}>
             <SelectTrigger className="w-[200px] h-8 text-xs">
@@ -94,7 +96,7 @@ export function MessageEditor({
         onSelect={syncSelection}
         placeholder={placeholder}
         rows={6}
-        className="resize-y font-mono text-sm"
+        className="resize-y font-mono text-sm input-soft min-h-[140px]"
       />
 
       {variables.length > 0 && (
@@ -111,7 +113,7 @@ export function MessageEditor({
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="h-7 text-xs font-mono"
+                className="h-7 text-xs font-mono rounded-md bg-accent/80 hover:bg-accent border-0"
                 onClick={() => insertVariable(v)}
               >
                 {`{${v}}`}

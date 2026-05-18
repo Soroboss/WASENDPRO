@@ -4,64 +4,66 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
+    --background: 0 0% 99%;
+    --foreground: 160 10% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
+    --card-foreground: 160 10% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
+    --popover-foreground: 160 10% 12%;
+    --primary: 152 69% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 20% 96%;
+    --secondary-foreground: 160 10% 20%;
+    --muted: 150 15% 95%;
+    --muted-foreground: 160 8% 46%;
+    --accent: 152 45% 94%;
+    --accent-foreground: 152 69% 28%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 64%;
-    --radius: 0.625rem;
-    --sidebar: 0 0% 98%;
-    --sidebar-foreground: 0 0% 9%;
-    --sidebar-primary: 0 0% 9%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 9%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 0 0% 64%;
+    --border: 150 12% 90%;
+    --input: 150 12% 90%;
+    --ring: 152 69% 38%;
+    --radius: 0.75rem;
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 160 10% 12%;
+    --sidebar-primary: 152 69% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 152 45% 96%;
+    --sidebar-accent-foreground: 152 69% 28%;
+    --sidebar-border: 150 12% 92%;
+    --sidebar-ring: 152 69% 38%;
+    --whatsapp: 142 70% 45%;
+    --whatsapp-dark: 152 76% 32%;
   }
 
   .dark {
-    --background: 0 0% 9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 18%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 0 0% 18%;
-    --accent-foreground: 0 0% 98%;
+    --background: 160 15% 7%;
+    --foreground: 150 10% 96%;
+    --card: 160 12% 10%;
+    --card-foreground: 150 10% 96%;
+    --popover: 160 12% 10%;
+    --popover-foreground: 150 10% 96%;
+    --primary: 142 70% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 160 10% 16%;
+    --secondary-foreground: 150 10% 96%;
+    --muted: 160 10% 16%;
+    --muted-foreground: 150 8% 58%;
+    --accent: 152 30% 14%;
+    --accent-foreground: 142 70% 55%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 0 0% 45%;
-    --sidebar: 0 0% 12%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 262 83% 58%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 18%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 0 0% 45%;
+    --border: 160 10% 18%;
+    --input: 160 10% 18%;
+    --ring: 142 70% 45%;
+    --sidebar: 160 12% 9%;
+    --sidebar-foreground: 150 10% 96%;
+    --sidebar-primary: 142 70% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 152 25% 14%;
+    --sidebar-accent-foreground: 142 70% 55%;
+    --sidebar-border: 160 10% 16%;
+    --sidebar-ring: 142 70% 45%;
   }
 
   * {
@@ -69,7 +71,61 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer components {
+  .dashboard-shell {
+    @apply relative min-h-screen;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(152 69% 38% / 0.06), transparent),
+      hsl(var(--background));
+  }
+
+  .card-elevated {
+    @apply rounded-xl border border-border/60 bg-card shadow-sm shadow-black/[0.03]
+      transition-all duration-200 hover:shadow-md hover:shadow-black/[0.05] hover:border-border;
+  }
+
+  .dialog-premium {
+    @apply sm:max-w-2xl rounded-2xl border border-border/50 p-0 gap-0 overflow-hidden
+      shadow-2xl shadow-black/10 ring-1 ring-black/5;
+  }
+
+  .dialog-premium-header {
+    @apply px-6 pt-6 pb-4 border-b border-border/50 bg-gradient-to-b from-muted/40 to-transparent;
+  }
+
+  .dialog-premium-body {
+    @apply px-6 py-5 space-y-5 max-h-[calc(90vh-180px)] overflow-y-auto;
+  }
+
+  .dialog-premium-footer {
+    @apply px-6 py-4 border-t border-border/50 bg-muted/30 flex gap-3 justify-end;
+  }
+
+  .btn-whatsapp {
+    @apply bg-[hsl(142,70%,45%)] text-white shadow-sm shadow-[hsl(142,70%,45%)]/25
+      hover:bg-[hsl(152,76%,32%)] hover:shadow-md hover:shadow-[hsl(142,70%,45%)]/30
+      transition-all duration-200;
+  }
+
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-foreground;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-muted-foreground mt-1;
+  }
+
+  .input-soft {
+    @apply rounded-lg border-border/80 bg-background shadow-sm
+      focus-visible:ring-2 focus-visible:ring-[hsl(142,70%,45%)]/30 focus-visible:border-[hsl(142,70%,45%)]/50;
+  }
+
+  .section-label {
+    @apply text-xs font-medium uppercase tracking-wider text-muted-foreground;
   }
 }
 

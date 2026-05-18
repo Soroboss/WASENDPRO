@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "9e1c8b3103f92fa8092568a44fe64858de7c5c9dc65ce4bea8f168080e889cfd"
+    },
+    "insforge": {
+      "source": "insforge/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/insforge/SKILL.md",
+      "computedHash": "eb5198df51df5da24c22723ddf822f3be3a20734967a77b5e5d43afd19b57aa5"
+    },
+    "insforge-backend-advisor": {
+      "source": "insforge/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/insforge-backend-advisor/SKILL.md",
+      "computedHash": "67e6e50a911f9c7753a157dc3040740173f8904ca6d6951a994cb7df20a7ee74"
+    },
+    "insforge-cli": {
+      "source": "insforge/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/insforge-cli/SKILL.md",
+      "computedHash": "57a0ec3568503db33d552ad0cf2a27d4539e817a0c0dbd94ee7e3f795c522fa9"
+    },
+    "insforge-debug": {
+      "source": "insforge/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/insforge-debug/SKILL.md",
+      "computedHash": "92db5bbddce22fbb1aad5bc7a13c316aa1fa3dcac6b303aaf2df5c6eef09292c"
+    },
+    "insforge-integrations": {
+      "source": "insforge/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/insforge-integrations/SKILL.md",
+      "computedHash": "2ff0d4a925df07a1491e3d83e5ad8cea21c406ad273e6ac2b41129b3aae0e834"
+    }
+  }
+}
