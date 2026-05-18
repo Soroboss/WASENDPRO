@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MessageEditor } from "./message-editor";
-import { getMessageVariables } from "@/lib/contacts";
+import { getMessageVariables, prepareImportRows } from "@/lib/contacts";
+import { formatDialDisplay } from "@/lib/countries";
+import { CountrySelector } from "@/components/settings/country-selector";
+import { useCountryDial } from "@/hooks/use-country-dial";
 import { downloadExcelTemplate, parseExcelFile } from "@/lib/excel";
 import { createCampaign } from "@/lib/inforge";
 import { compileMessage } from "@/lib/message";
@@ -48,6 +51,8 @@ export function CampaignFormDialog({
   onExtensionImportConsumed,
 }: CampaignFormDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { dialCode } = useCountryDial();
+  const [rawRows, setRawRows] = useState<ImportedRow[]>([]);
   const [name, setName] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const [message, setMessage] = useState("");
@@ -64,6 +69,7 @@ export function CampaignFormDialog({
     setMessage("");
     setHeaders([]);
     setRows([]);
+    setRawRows([]);
     setAttachmentFiles([]);
     setImportMeta(null);
     setError(null);
@@ -72,6 +78,7 @@ export function CampaignFormDialog({
   useEffect(() => {
     if (!open || !extensionImport) return;
     setHeaders(extensionImport.headers);
+    setRawRows(extensionImport.rows);
     setRows(extensionImport.rows);
     setError(null);
     if (extensionImport.fileName) {
@@ -81,34 +88,57 @@ export function CampaignFormDialog({
     onExtensionImportConsumed?.();
   }, [open, extensionImport, onExtensionImportConsumed]);
 
+  const applyRowsWithCountry = useCallback(
+    (h: string[], raw: ImportedRow[], dial: string) => {
+      const { rows: prepared, skippedNoPhone, skippedDuplicate } =
+        prepareImportRows(h, raw, dial);
+      setRows(prepared);
+      const warnings: string[] = [];
+      if (skippedNoPhone > 0) {
+        warnings.push(`${skippedNoPhone} sans numéro valide`);
+      }
+      if (skippedDuplicate > 0) {
+        warnings.push(`${skippedDuplicate} doublon(s) ignoré(s)`);
+      }
+      setImportMeta(
+        prepared.length === 0
+          ? `Aucun contact avec l'indicatif ${formatDialDisplay(dial)}`
+          : warnings.length > 0
+            ? `${prepared.length} contact(s) · indicatif ${formatDialDisplay(dial)} · ${warnings.join(" · ")}`
+            : `${prepared.length} contact(s) · indicatif ${formatDialDisplay(dial)}`
+      );
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (headers.length > 0 && rawRows.length > 0) {
+      applyRowsWithCountry(headers, rawRows, dialCode);
+    }
+  }, [dialCode, headers, rawRows, applyRowsWithCountry]);
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const { headers: h, rows: r, meta } = await parseExcelFile(file);
-      if (r.length === 0) {
-        setError(
-          meta && meta.skippedNoPhone > 0
-            ? "Aucune ligne avec un numéro valide (8 à 15 chiffres)."
-            : "Le fichier Excel est vide."
-        );
+      const { headers: h, rawRows: raw, meta } = await parseExcelFile(
+        file,
+        dialCode
+      );
+      if (raw.length === 0) {
+        setError("Le fichier Excel est vide.");
         return;
       }
       setHeaders(h);
-      setRows(r);
-      const warnings: string[] = [];
-      if (meta.skippedNoPhone > 0) {
-        warnings.push(`${meta.skippedNoPhone} sans numéro valide`);
+      setRawRows(raw);
+      applyRowsWithCountry(h, raw, dialCode);
+      if (meta.imported === 0) {
+        setError(
+          `Aucun numéro valide avec l'indicatif ${formatDialDisplay(dialCode)}. Changez de pays ou corrigez la colonne Téléphone.`
+        );
+      } else {
+        setError(null);
       }
-      if (meta.skippedDuplicate > 0) {
-        warnings.push(`${meta.skippedDuplicate} doublon(s) ignoré(s)`);
-      }
-      setImportMeta(
-        warnings.length > 0
-          ? `${r.length} contact(s) importé(s) · ${warnings.join(" · ")}`
-          : `${r.length} contact(s) prêt(s) pour la campagne`
-      );
-      setError(null);
     } catch {
       setError("Impossible de lire le fichier Excel.");
     }
@@ -144,6 +174,7 @@ export function CampaignFormDialog({
         importedRows: rows,
         columnHeaders: headers,
         attachments,
+        countryDialCode: dialCode,
       });
       reset();
       onOpenChange(false);
@@ -203,6 +234,8 @@ export function CampaignFormDialog({
               />
             </div>
           </div>
+
+          <CountrySelector compact showHint />
 
           <div className="rounded-xl border border-dashed border-border/80 bg-muted/30 p-4 space-y-3">
             <p className="section-label">Contacts</p>

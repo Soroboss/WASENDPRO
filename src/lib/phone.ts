@@ -1,3 +1,5 @@
+import { getDefaultCountryDialCode } from "@/lib/country-settings";
+
 /** Caractères invisibles (Excel, copier-coller) qui cassent les liens wa.me. */
 const INVISIBLE_CHARS =
   /[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF\u00AD]/g;
@@ -20,41 +22,44 @@ export function normalizeExcelPhone(value: string): string {
 }
 
 /**
- * Format international pour wa.me / api.whatsapp.com (sans +, sans 00).
- * Gère 06… → 33…, 7x… (Sénégal) → 221…, etc.
+ * Format international pour WhatsApp (sans +).
+ * Utilise l’indicatif pays choisi dans les paramètres.
  */
-export function normalizePhoneForWhatsApp(phone: string): string {
+export function normalizePhoneForWhatsApp(
+  phone: string,
+  countryDialCode?: string
+): string {
+  const dial = (countryDialCode ?? getDefaultCountryDialCode()).replace(/\D/g, "");
   let digits = normalizeExcelPhone(phone);
-  if (!digits) return "";
+  if (!digits || !dial) return "";
 
   if (digits.startsWith("00")) {
     digits = digits.slice(2);
   }
 
-  // Déjà au format international (33…, 221…, 1…)
+  if (digits.startsWith(dial) && digits.length >= dial.length + 8) {
+    return digits;
+  }
+
   if (digits.length >= 11) {
     return digits;
   }
 
-  // France : 06 12 34 56 78 (10 chiffres avec 0 initial)
-  if (digits.length === 10 && digits.startsWith("0")) {
-    return `33${digits.slice(1)}`;
+  if (digits.startsWith("0")) {
+    return `${dial}${digits.slice(1)}`;
   }
 
-  // France : 6/7 XX XX XX XX (9 chiffres, mobile sans 0)
-  if (digits.length === 9 && /^[67]/.test(digits)) {
-    return `33${digits}`;
-  }
-
-  // Sénégal : 77 XXX XX XX (9 chiffres, commence par 7)
-  if (digits.length === 9 && /^7[678]/.test(digits)) {
-    return `221${digits}`;
+  if (digits.length >= 8 && digits.length <= 10 && !digits.startsWith(dial)) {
+    return `${dial}${digits}`;
   }
 
   return digits;
 }
 
-export function isValidPhone(phone: string): boolean {
-  const digits = normalizePhoneForWhatsApp(phone);
+export function isValidPhone(
+  phone: string,
+  countryDialCode?: string
+): boolean {
+  const digits = normalizePhoneForWhatsApp(phone, countryDialCode);
   return digits.length >= 10 && digits.length <= 15;
 }

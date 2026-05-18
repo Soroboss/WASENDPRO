@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -18,6 +18,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { compileMessage } from "@/lib/message";
 import { WhatsAppMessagePreview } from "@/components/campaigns/whatsapp-message-preview";
+import {
+  CampaignContactsPagination,
+  paginateItems,
+} from "@/components/campaigns/campaign-contacts-pagination";
+import { formatDialDisplay, getCountryByDial } from "@/lib/countries";
 import { getWhatsAppPhoneError, openWhatsApp } from "@/lib/whatsapp";
 import { queueWhatsAppAttachments } from "@/lib/whatsapp-bridge";
 import { formatFileSize, getAttachmentKind } from "@/lib/attachments";
@@ -55,6 +60,8 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
   const [logs, setLogs] = useState<LogWithContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,6 +81,18 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
     load();
   }, [load]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [logs.length, pageSize]);
+
+  const paginatedLogs = useMemo(
+    () => paginateItems(logs, page, pageSize),
+    [logs, page, pageSize]
+  );
+
+  const countryDial = campaign?.country_dial ?? "33";
+  const countryLabel = getCountryByDial(countryDial);
+
   const getRowData = (log: LogWithContact): Record<string, string> => {
     if (log.row_data && Object.keys(log.row_data).length > 0) {
       return log.row_data;
@@ -89,7 +108,7 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
     const attachments = campaign.attachments ?? [];
     const hasAttachments = attachments.length > 0;
 
-    const phoneError = getWhatsAppPhoneError(phone);
+    const phoneError = getWhatsAppPhoneError(phone, countryDial);
     if (phoneError) {
       alert(phoneError);
       return;
@@ -193,7 +212,13 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
         description={
           <>
             {sentCount}/{logs.length} envoyés · {logs.length} contact
-            {logs.length > 1 ? "s" : ""} dans la campagne
+            {logs.length > 1 ? "s" : ""}
+            {countryLabel && (
+              <>
+                {" "}
+                · {countryLabel.flag} {formatDialDisplay(countryDial)}
+              </>
+            )}
             {campaign.scheduled_date && (
               <>
                 {" "}
@@ -283,7 +308,7 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
             Contacts à envoyer ({logs.length})
           </CardTitle>
         </CardHeader>
-        <ScrollArea className="max-h-[min(70vh,720px)]">
+        <ScrollArea className="h-[min(65vh,640px)]">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -303,7 +328,7 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
                   </TableCell>
                 </TableRow>
               ) : (
-              logs.map((log) => {
+              paginatedLogs.map((log) => {
                 const rowData = getRowData(log);
                 const compiled = compileMessage(
                   campaign.template_message,
@@ -373,6 +398,13 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
             </TableBody>
           </Table>
         </ScrollArea>
+        <CampaignContactsPagination
+          total={logs.length}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </Card>
     </div>
   );

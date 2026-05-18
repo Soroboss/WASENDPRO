@@ -97,16 +97,17 @@ export function contactToFormFields(
 
 export function findPhoneFromRow(
   headers: string[],
-  row: ImportedRow
+  row: ImportedRow,
+  countryDialCode?: string
 ): string {
   for (const h of headers) {
     if (isPhoneColumnKey(h)) {
-      return normalizePhoneForWhatsApp(row[h] ?? "");
+      return normalizePhoneForWhatsApp(row[h] ?? "", countryDialCode);
     }
   }
   for (const h of headers) {
-    const digits = normalizePhoneForWhatsApp(row[h] ?? "");
-    if (isValidPhone(digits)) return digits;
+    const digits = normalizePhoneForWhatsApp(row[h] ?? "", countryDialCode);
+    if (isValidPhone(digits, countryDialCode)) return digits;
   }
   return "";
 }
@@ -114,7 +115,8 @@ export function findPhoneFromRow(
 /** Filtre les lignes importables et déduplique par numéro (1ère occurrence). */
 export function prepareImportRows(
   headers: string[],
-  rows: ImportedRow[]
+  rows: ImportedRow[],
+  countryDialCode?: string
 ): {
   rows: ImportedRow[];
   skippedNoPhone: number;
@@ -126,8 +128,8 @@ export function prepareImportRows(
   let skippedDuplicate = 0;
 
   for (const row of rows) {
-    const phone = findPhoneFromRow(headers, row);
-    if (!isValidPhone(phone)) {
+    const phone = findPhoneFromRow(headers, row, countryDialCode);
+    if (!isValidPhone(phone, countryDialCode)) {
       skippedNoPhone++;
       continue;
     }
@@ -144,7 +146,8 @@ export function prepareImportRows(
 
 export function rowToSnapshot(
   headers: string[],
-  row: ImportedRow
+  row: ImportedRow,
+  countryDialCode?: string
 ): Record<string, string> {
   const data: Record<string, string> = {};
   for (const h of headers) {
@@ -152,7 +155,7 @@ export function rowToSnapshot(
     if (!key) continue;
     let value = String(row[h] ?? "").trim();
     if (isPhoneColumnKey(key)) {
-      value = normalizePhoneForWhatsApp(value);
+      value = normalizePhoneForWhatsApp(value, countryDialCode);
     }
     data[key] = value;
   }

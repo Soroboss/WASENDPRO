@@ -5,6 +5,7 @@ import {
   prepareImportRows,
   rowToSnapshot,
 } from "@/lib/contacts";
+import { DEFAULT_COUNTRY_DIAL } from "@/lib/countries";
 import { normalizePhoneForWhatsApp } from "@/lib/phone";
 import type {
   Campaign,
@@ -29,9 +30,16 @@ function normalizeCampaign(row: Record<string, unknown>): Campaign {
       attachments = [];
     }
   }
+  const dial = row.country_dial;
+  const country_dial =
+    typeof dial === "string" && dial.replace(/\D/g, "")
+      ? String(dial).replace(/\D/g, "")
+      : DEFAULT_COUNTRY_DIAL;
+
   return {
     ...(row as unknown as Campaign),
     attachments,
+    country_dial,
   };
 }
 
@@ -105,9 +113,10 @@ export async function getContacts(): Promise<Contact[]> {
 
 export async function upsertContactFromRow(
   row: ImportedRow,
-  headers: string[]
+  headers: string[],
+  countryDialCode?: string
 ): Promise<Contact> {
-  const phone = findPhoneFromRow(headers, row);
+  const phone = findPhoneFromRow(headers, row, countryDialCode);
   if (!phone) throw new Error("Numéro de téléphone manquant");
 
   const name = findNameFromRow(headers, row);
@@ -299,9 +308,12 @@ async function insertCampaignLogsBatch(
 export async function createCampaign(
   input: CreateCampaignInput
 ): Promise<Campaign> {
+  const dial = input.countryDialCode.replace(/\D/g, "") || DEFAULT_COUNTRY_DIAL;
+
   const { rows, skippedNoPhone, skippedDuplicate } = prepareImportRows(
     input.columnHeaders,
-    input.importedRows
+    input.importedRows,
+    dial
   );
 
   if (rows.length === 0) {
@@ -330,6 +342,7 @@ export async function createCampaign(
           template_message: input.template_message,
           scheduled_date: input.scheduled_date ?? null,
           attachments: input.attachments ?? [],
+          country_dial: dial,
         },
       ])
       .select()
@@ -344,12 +357,12 @@ export async function createCampaign(
     }[] = [];
 
     for (const row of rows) {
-      const contact = await upsertContactFromRow(row, input.columnHeaders);
+      const contact = await upsertContactFromRow(row, input.columnHeaders, dial);
       logsToInsert.push({
         campaign_id: campaign.id,
         contact_id: contact.id,
         status: "pending",
-        row_data: rowToSnapshot(input.columnHeaders, row),
+        row_data: rowToSnapshot(input.columnHeaders, row, dial),
       });
     }
 
@@ -364,19 +377,20 @@ export async function createCampaign(
     template_message: input.template_message,
     scheduled_date: input.scheduled_date ?? null,
     attachments: input.attachments ?? [],
+    country_dial: dial,
     created_at: new Date().toISOString(),
   };
   store.campaigns.push(campaign);
 
   for (const row of rows) {
-    const contact = await upsertContactFromRow(row, input.columnHeaders);
+    const contact = await upsertContactFromRow(row, input.columnHeaders, dial);
     store.campaign_logs.push({
       id: generateId(),
       campaign_id: campaign.id,
       contact_id: contact.id,
       status: "pending",
       sent_at: null,
-      row_data: rowToSnapshot(input.columnHeaders, row),
+      row_data: rowToSnapshot(input.columnHeaders, row, dial),
     });
   }
   writeLocalStore(store);

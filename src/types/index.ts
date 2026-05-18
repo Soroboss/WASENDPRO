@@ -23,6 +23,8 @@ export interface Campaign {
   template_message: string;
   scheduled_date: string | null;
   attachments: CampaignAttachment[];
+  /** Indicatif pays pour les numéros (ex. 33, 221). */
+  country_dial: string;
   created_at: string;
 }
 
@@ -53,6 +55,7 @@ export interface CreateCampaignInput {
   importedRows: ImportedRow[];
   columnHeaders: string[];
   attachments?: CampaignAttachment[];
+  countryDialCode: string;
 }
 
 export interface UpdateContactInput {

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConnectionStatus } from "@/components/dashboard/connection-status";
+import { CountrySettingsCard } from "@/components/settings/country-settings-card";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   BookOpen,
@@ -15,7 +16,7 @@ const instructions = [
     steps: [
       "Téléchargez le modèle Excel (Nom, Prénom, Téléphone, Entreprise, Ville, Email, Offre…).",
       "Ajoutez vos propres colonnes — chaque colonne devient une variable {Nom}, {Ville}, etc.",
-      "Les numéros doivent être au format international sans le + (ex: 33612345678).",
+      "Choisissez votre pays dans Paramètres — l'indicatif est ajouté aux numéros locaux (06…, 77…).",
     ],
   },
   {
@@ -50,6 +51,8 @@ export default function SettingsPage() {
       />
 
       <ConnectionStatus />
+
+      <CountrySettingsCard />
 
       <div className="grid gap-4">
         {instructions.map((section, index) => (

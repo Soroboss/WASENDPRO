@@ -83,12 +83,15 @@ export function openWhatsApp(
   return true;
 }
 
-export function getWhatsAppPhoneError(phone: string): string | null {
-  const normalized = normalizePhoneForWhatsApp(phone);
+export function getWhatsAppPhoneError(
+  phone: string,
+  countryDialCode?: string
+): string | null {
+  const normalized = normalizePhoneForWhatsApp(phone, countryDialCode);
   if (!normalized) {
     return "Numéro vide. Utilisez le format international (ex. 33612345678 ou 221771234567).";
   }
-  if (!isValidPhone(normalized)) {
+  if (!isValidPhone(normalized, countryDialCode)) {
     return `Numéro invalide : « ${phone} » → « ${normalized} ». Vérifiez le format international sans +.`;
   }
   return null;

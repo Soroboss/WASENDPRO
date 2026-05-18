@@ -57,6 +57,8 @@ export function downloadExcelTemplate(filename = "modele_contacts.xlsx"): void {
 export interface ExcelParseResult {
   headers: string[];
   rows: ImportedRow[];
+  /** Lignes brutes avant filtrage (pour changer de pays). */
+  rawRows: ImportedRow[];
   meta: {
     totalInFile: number;
     imported: number;
@@ -66,7 +68,10 @@ export interface ExcelParseResult {
 }
 
 /** Parse un fichier Excel et retourne lignes + en-têtes. */
-export async function parseExcelFile(file: File): Promise<ExcelParseResult> {
+export async function parseExcelFile(
+  file: File,
+  countryDialCode?: string
+): Promise<ExcelParseResult> {
   const buffer = await file.arrayBuffer();
   const wb = XLSX.read(buffer, { type: "array" });
   const sheetName = wb.SheetNames[0];
@@ -79,6 +84,7 @@ export async function parseExcelFile(file: File): Promise<ExcelParseResult> {
     return {
       headers: [],
       rows: [],
+      rawRows: [],
       meta: {
         totalInFile: 0,
         imported: 0,
@@ -107,12 +113,14 @@ export async function parseExcelFile(file: File): Promise<ExcelParseResult> {
 
   const { rows: prepared, skippedNoPhone, skippedDuplicate } = prepareImportRows(
     headers,
-    rows
+    rows,
+    countryDialCode
   );
 
   return {
     headers,
     rows: prepared,
+    rawRows: rows,
     meta: {
       totalInFile: rows.length,
       imported: prepared.length,

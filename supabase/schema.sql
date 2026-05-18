@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
   template_message TEXT NOT NULL,
   scheduled_date TIMESTAMPTZ,
   attachments JSONB NOT NULL DEFAULT '[]',
+  country_dial TEXT NOT NULL DEFAULT '33',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

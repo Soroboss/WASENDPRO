@@ -1,0 +1,2 @@
+ALTER TABLE campaigns
+  ADD COLUMN IF NOT EXISTS country_dial TEXT NOT NULL DEFAULT '33';
