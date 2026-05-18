@@ -262,14 +262,6 @@ export function CampaignFormDialog({
                     </Badge>
                   ))}
                 </div>
-                {rows[0] && message.trim() && (
-                  <p className="text-xs text-muted-foreground border-t border-white/10 pt-2">
-                    <span className="section-label block mb-1">Aperçu (1er contact)</span>
-                    <span className="font-mono line-clamp-3 block">
-                      {compileMessage(message, rows[0])}
-                    </span>
-                  </p>
-                )}
               </div>
             )}
           </div>
@@ -284,6 +276,11 @@ export function CampaignFormDialog({
             value={message}
             onChange={setMessage}
             variables={headers}
+            previewMessage={
+              rows[0] && message.trim()
+                ? compileMessage(message, rows[0])
+                : undefined
+            }
           />
 
           {error && (

@@ -17,6 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { compileMessage } from "@/lib/message";
+import { WhatsAppMessagePreview } from "@/components/campaigns/whatsapp-message-preview";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { queueWhatsAppAttachments } from "@/lib/whatsapp-bridge";
 import { formatFileSize, getAttachmentKind } from "@/lib/attachments";
@@ -254,10 +255,19 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
             Modèle de message
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm font-mono bg-muted/40 rounded-xl p-4 whitespace-pre-wrap leading-relaxed border border-border/40">
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground font-mono bg-muted/30 rounded-lg p-3 whitespace-pre-wrap border border-border/40">
             {campaign.template_message}
           </p>
+          {logs[0] && (
+            <WhatsAppMessagePreview
+              text={compileMessage(
+                campaign.template_message,
+                getRowData(logs[0])
+              )}
+              label="Exemple rendu (1er contact)"
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -310,10 +320,12 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
                     <TableCell className="font-mono text-sm text-muted-foreground">
                       {log.contact.phone}
                     </TableCell>
-                    <TableCell className="max-w-xs">
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {compiled}
-                      </p>
+                    <TableCell className="min-w-[200px] max-w-sm align-top py-3">
+                      <WhatsAppMessagePreview
+                        text={compiled}
+                        compact
+                        label=""
+                      />
                     </TableCell>
                     <TableCell>
                       {isSent ? (

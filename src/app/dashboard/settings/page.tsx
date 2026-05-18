@@ -23,8 +23,8 @@ const instructions = [
     title: "Rédiger le message",
     steps: [
       "Importez votre fichier Excel — les colonnes deviennent des variables {Nom}, etc.",
-      "Cliquez sur une variable pour l'insérer, ou surlignez du texte puis cliquez pour remplacer.",
-      "Utilisez le menu déroulant « Insérer variable » comme alternative.",
+      "Mettez en *gras*, _italique_ ou ~barré~ avec la barre d'outils (syntaxe WhatsApp).",
+      "L'aperçu bulle verte montre le message aligné avant chaque envoi.",
     ],
   },
   {

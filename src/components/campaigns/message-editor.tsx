@@ -11,13 +11,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { WhatsAppMessagePreview } from "@/components/campaigns/whatsapp-message-preview";
 import { insertAtCursor } from "@/lib/message";
-import { Braces } from "lucide-react";
+import {
+  wrapWithWhatsAppFormat,
+  type FormatWrapper,
+} from "@/lib/whatsapp-format";
+import {
+  Bold,
+  Braces,
+  Code,
+  Italic,
+  Strikethrough,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface MessageEditorProps {
   value: string;
   onChange: (value: string) => void;
   variables: string[];
+  /** Message compilé (1er contact) pour l’aperçu WhatsApp */
+  previewMessage?: string;
   placeholder?: string;
 }
 
@@ -25,7 +39,8 @@ export function MessageEditor({
   value,
   onChange,
   variables,
-  placeholder = "Bonjour {Nom}, nous vous contactons depuis {Entreprise}...",
+  previewMessage,
+  placeholder = "Bonjour {Nom},\n\nVotre *offre* est prête…",
 }: MessageEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
@@ -35,6 +50,21 @@ export function MessageEditor({
     if (!el) return;
     setSelection({ start: el.selectionStart, end: el.selectionEnd });
   }, []);
+
+  const applyChange = useCallback(
+    (newValue: string, newCursor: number) => {
+      onChange(newValue);
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (el) {
+          el.focus();
+          el.setSelectionRange(newCursor, newCursor);
+          setSelection({ start: newCursor, end: newCursor });
+        }
+      });
+    },
+    [onChange]
+  );
 
   const insertVariable = useCallback(
     (varName: string) => {
@@ -51,40 +81,100 @@ export function MessageEditor({
         end,
         hasSelection
       );
-      onChange(newValue);
-
-      requestAnimationFrame(() => {
-        if (el) {
-          el.focus();
-          el.setSelectionRange(newCursor, newCursor);
-          setSelection({ start: newCursor, end: newCursor });
-        }
-      });
+      applyChange(newValue, newCursor);
     },
-    [value, onChange, selection]
+    [value, applyChange, selection]
   );
+
+  const applyFormat = useCallback(
+    (format: FormatWrapper) => {
+      const el = textareaRef.current;
+      const start = el?.selectionStart ?? selection.start;
+      const end = el?.selectionEnd ?? selection.end;
+      const { newValue, newCursor } = wrapWithWhatsAppFormat(
+        value,
+        start,
+        end,
+        format
+      );
+      applyChange(newValue, newCursor);
+    },
+    [value, applyChange, selection]
+  );
+
+  const displayPreview = (previewMessage ?? value).trim();
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Label htmlFor="message" className="section-label">
           Message
         </Label>
-        {variables.length > 0 && (
-          <Select onValueChange={(v) => v && insertVariable(String(v))}>
-            <SelectTrigger className="w-[200px] h-8 text-xs">
-              <SelectValue placeholder="Insérer variable" />
-            </SelectTrigger>
-            <SelectContent>
-              {variables.map((v) => (
-                <SelectItem key={v} value={v}>
-                  {`{${v}}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[10px] text-muted-foreground mr-1 hidden sm:inline">
+            Mise en forme :
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            title="Gras (*texte*)"
+            onClick={() => applyFormat("bold")}
+          >
+            <Bold className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            title="Italique (_texte_)"
+            onClick={() => applyFormat("italic")}
+          >
+            <Italic className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            title="Barré (~texte~)"
+            onClick={() => applyFormat("strike")}
+          >
+            <Strikethrough className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 rounded-lg"
+            title="Code (```texte```)"
+            onClick={() => applyFormat("code")}
+          >
+            <Code className="h-3.5 w-3.5" />
+          </Button>
+          {variables.length > 0 && (
+            <Select onValueChange={(v) => v && insertVariable(String(v))}>
+              <SelectTrigger className="w-[160px] h-8 text-xs ml-1">
+                <SelectValue placeholder="Variable" />
+              </SelectTrigger>
+              <SelectContent>
+                {variables.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {`{${v}}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
+
+      <p className="text-[11px] text-muted-foreground -mt-1">
+        WhatsApp : *gras* · _italique_ · ~barré~ · ```code``` — les retours à la
+        ligne sont conservés à l&apos;envoi.
+      </p>
 
       <Textarea
         id="message"
@@ -95,16 +185,18 @@ export function MessageEditor({
         onKeyUp={syncSelection}
         onSelect={syncSelection}
         placeholder={placeholder}
-        rows={6}
-        className="resize-y font-mono text-sm input-soft min-h-[140px]"
+        rows={8}
+        className={cn(
+          "resize-y text-sm input-soft min-h-[160px]",
+          "leading-relaxed whitespace-pre-wrap"
+        )}
       />
 
       {variables.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Braces className="h-3 w-3" />
-            Cliquez pour insérer, ou surlignez du texte puis cliquez pour
-            remplacer
+            Variables — cliquez pour insérer
           </p>
           <div className="flex flex-wrap gap-2">
             {variables.map((v) => (
@@ -120,6 +212,19 @@ export function MessageEditor({
               </Button>
             ))}
           </div>
+        </div>
+      )}
+
+      {displayPreview && (
+        <div className="rounded-xl border border-white/10 bg-muted/20 p-4">
+          <WhatsAppMessagePreview
+            text={displayPreview}
+            label={
+              previewMessage
+                ? "Aperçu avant envoi (1er contact)"
+                : "Aperçu du message"
+            }
+          />
         </div>
       )}
     </div>
