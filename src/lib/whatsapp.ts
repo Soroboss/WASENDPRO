@@ -16,14 +16,28 @@ export function buildWhatsAppWebUrl(phone: string, message: string): string {
   return `https://web.whatsapp.com/send?phone=${numero}&text=${text}`;
 }
 
-/** Ouvre WhatsApp (Web si pièces jointes, sinon wa.me). */
+/** Ouvre WhatsApp (Web si pièces jointes, sinon wa.me / app). */
 export function openWhatsApp(
   phone: string,
   message: string,
   options?: { useWeb?: boolean }
-): void {
+): boolean {
+  const numero = normalizePhone(phone);
+  if (!numero) return false;
+
   const url = options?.useWeb
     ? buildWhatsAppWebUrl(phone, message)
     : buildWhatsAppUrl(phone, message);
-  window.open(url, "_blank", "noopener,noreferrer");
+
+  const popup = window.open(url, "_blank");
+  if (popup) return true;
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  return true;
 }

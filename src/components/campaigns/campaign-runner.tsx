@@ -73,43 +73,62 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
     load();
   }, [load]);
 
-  const getRowData = (contact: Contact): Record<string, string> => {
-    return contact.custom_data ?? {};
+  const getRowData = (log: LogWithContact): Record<string, string> => {
+    if (log.row_data && Object.keys(log.row_data).length > 0) {
+      return log.row_data;
+    }
+    return log.contact.custom_data ?? {};
   };
 
-  const handleSend = async (log: LogWithContact) => {
+  const handleSend = (log: LogWithContact) => {
     if (!campaign || log.status === "sent") return;
-    const rowData = getRowData(log.contact);
+    const rowData = getRowData(log);
     const compiled = compileMessage(campaign.template_message, rowData);
     const phone = log.contact.phone;
-
-    setSendingId(log.contact_id);
     const attachments = campaign.attachments ?? [];
     const hasAttachments = attachments.length > 0;
 
-    if (hasAttachments) {
-      await queueWhatsAppAttachments(phone, compiled, attachments);
+    const opened = openWhatsApp(phone, compiled, { useWeb: hasAttachments });
+    if (!opened) {
+      alert("Numéro de téléphone invalide pour ce contact.");
+      return;
     }
-    openWhatsApp(phone, compiled, { useWeb: hasAttachments });
 
-    try {
-      await markContactAsSent(campaign.id, log.contact_id);
-      setLogs((prev) =>
-        prev.map((l) =>
-          l.contact_id === log.contact_id
-            ? { ...l, status: "sent" as const, sent_at: new Date().toISOString() }
-            : l
-        )
-      );
-    } finally {
-      setSendingId(null);
-    }
+    setSendingId(log.contact_id);
+
+    void (async () => {
+      try {
+        if (hasAttachments) {
+          await queueWhatsAppAttachments(phone, compiled, attachments);
+        }
+        await markContactAsSent(campaign.id, log.contact_id);
+        setLogs((prev) =>
+          prev.map((l) =>
+            l.contact_id === log.contact_id
+              ? {
+                  ...l,
+                  status: "sent" as const,
+                  sent_at: new Date().toISOString(),
+                }
+              : l
+          )
+        );
+      } catch (err) {
+        alert(
+          err instanceof Error
+            ? err.message
+            : "Impossible de marquer le contact comme envoyé."
+        );
+      } finally {
+        setSendingId(null);
+      }
+    })();
   };
 
   const handleExport = () => {
     if (!campaign) return;
     const report = logs.map((log) => {
-      const rowData = getRowData(log.contact);
+      const rowData = getRowData(log);
       const compiled = compileMessage(campaign.template_message, rowData);
       return {
         name: log.contact.name ?? rowData["Nom"] ?? "—",
@@ -166,7 +185,8 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
         icon={Megaphone}
         description={
           <>
-            {sentCount}/{logs.length} envoyés
+            {sentCount}/{logs.length} envoyés · {logs.length} contact
+            {logs.length > 1 ? "s" : ""} dans la campagne
             {campaign.scheduled_date && (
               <>
                 {" "}
@@ -242,7 +262,12 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
       </Card>
 
       <Card className="card-elevated overflow-hidden">
-        <ScrollArea className="max-h-[520px]">
+        <CardHeader className="pb-2 border-b border-border/40">
+          <CardTitle className="text-sm font-medium">
+            Contacts à envoyer ({logs.length})
+          </CardTitle>
+        </CardHeader>
+        <ScrollArea className="max-h-[min(70vh,720px)]">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -254,8 +279,16 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.map((log) => {
-                const rowData = getRowData(log.contact);
+              {logs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                    Aucun contact dans cette campagne. Recréez-la en important un
+                    fichier Excel avec des numéros valides.
+                  </TableCell>
+                </TableRow>
+              ) : (
+              logs.map((log) => {
+                const rowData = getRowData(log);
                 const compiled = compileMessage(
                   campaign.template_message,
                   rowData
@@ -317,7 +350,8 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
                     </TableCell>
                   </TableRow>
                 );
-              })}
+              })
+              )}
             </TableBody>
           </Table>
         </ScrollArea>

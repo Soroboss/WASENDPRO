@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS campaign_logs (
   contact_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'failed')),
   sent_at TIMESTAMPTZ,
+  row_data JSONB NOT NULL DEFAULT '{}',
   UNIQUE (campaign_id, contact_id)
 );
 

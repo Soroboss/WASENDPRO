@@ -1,6 +1,11 @@
 import * as XLSX from "xlsx";
 import type { ImportedRow } from "@/types";
-import { TEMPLATE_HEADERS } from "@/lib/contacts";
+import {
+  isPhoneColumnKey,
+  prepareImportRows,
+  TEMPLATE_HEADERS,
+} from "@/lib/contacts";
+import { normalizeExcelPhone } from "@/lib/phone";
 
 const EXAMPLE_ROWS: string[][] = [
   [
@@ -49,10 +54,19 @@ export function downloadExcelTemplate(filename = "modele_contacts.xlsx"): void {
   XLSX.writeFile(wb, filename);
 }
 
+export interface ExcelParseResult {
+  headers: string[];
+  rows: ImportedRow[];
+  meta: {
+    totalInFile: number;
+    imported: number;
+    skippedNoPhone: number;
+    skippedDuplicate: number;
+  };
+}
+
 /** Parse un fichier Excel et retourne lignes + en-têtes. */
-export async function parseExcelFile(
-  file: File
-): Promise<{ headers: string[]; rows: ImportedRow[] }> {
+export async function parseExcelFile(file: File): Promise<ExcelParseResult> {
   const buffer = await file.arrayBuffer();
   const wb = XLSX.read(buffer, { type: "array" });
   const sheetName = wb.SheetNames[0];
@@ -62,19 +76,50 @@ export async function parseExcelFile(
   });
 
   if (raw.length === 0) {
-    return { headers: [], rows: [] };
+    return {
+      headers: [],
+      rows: [],
+      meta: {
+        totalInFile: 0,
+        imported: 0,
+        skippedNoPhone: 0,
+        skippedDuplicate: 0,
+      },
+    };
   }
 
-  const headers = Object.keys(raw[0]);
-  const rows: ImportedRow[] = raw.map((row) => {
-    const entry: ImportedRow = {};
-    for (const h of headers) {
-      entry[h] = String(row[h] ?? "").trim();
-    }
-    return entry;
-  });
+  const headers = Object.keys(raw[0]).map((h) => h.trim()).filter(Boolean);
+  const rows: ImportedRow[] = raw
+    .map((row) => {
+      const entry: ImportedRow = {};
+      for (const h of headers) {
+        let value = String(row[h] ?? "").trim();
+        if (isPhoneColumnKey(h)) {
+          value = normalizeExcelPhone(value);
+        }
+        entry[h] = value;
+      }
+      return entry;
+    })
+    .filter((row) =>
+      headers.some((h) => String(row[h] ?? "").trim().length > 0)
+    );
 
-  return { headers, rows };
+  const { rows: prepared, skippedNoPhone, skippedDuplicate } = prepareImportRows(
+    headers,
+    rows
+  );
+
+  return {
+    headers,
+    rows: prepared,
+    meta: {
+      totalInFile: rows.length,
+      imported: prepared.length,
+      skippedNoPhone,
+      skippedDuplicate,
+    },
+  };
 }
 
 /** Exporte un rapport de campagne en Excel. */

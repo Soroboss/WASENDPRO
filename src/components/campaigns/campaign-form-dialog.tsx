@@ -54,6 +54,7 @@ export function CampaignFormDialog({
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  const [importMeta, setImportMeta] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +65,7 @@ export function CampaignFormDialog({
     setHeaders([]);
     setRows([]);
     setAttachmentFiles([]);
+    setImportMeta(null);
     setError(null);
   };
 
@@ -83,13 +85,29 @@ export function CampaignFormDialog({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const { headers: h, rows: r } = await parseExcelFile(file);
+      const { headers: h, rows: r, meta } = await parseExcelFile(file);
       if (r.length === 0) {
-        setError("Le fichier Excel est vide.");
+        setError(
+          meta && meta.skippedNoPhone > 0
+            ? "Aucune ligne avec un numéro valide (8 à 15 chiffres)."
+            : "Le fichier Excel est vide."
+        );
         return;
       }
       setHeaders(h);
       setRows(r);
+      const warnings: string[] = [];
+      if (meta.skippedNoPhone > 0) {
+        warnings.push(`${meta.skippedNoPhone} sans numéro valide`);
+      }
+      if (meta.skippedDuplicate > 0) {
+        warnings.push(`${meta.skippedDuplicate} doublon(s) ignoré(s)`);
+      }
+      setImportMeta(
+        warnings.length > 0
+          ? `${r.length} contact(s) importé(s) · ${warnings.join(" · ")}`
+          : `${r.length} contact(s) prêt(s) pour la campagne`
+      );
       setError(null);
     } catch {
       setError("Impossible de lire le fichier Excel.");
@@ -223,6 +241,9 @@ export function CampaignFormDialog({
                 </Badge>
               )}
             </div>
+            {importMeta && (
+              <p className="text-xs text-muted-foreground">{importMeta}</p>
+            )}
 
             {headers.length > 0 && (
               <div className="rounded-lg border border-white/10 bg-black/20 p-3 space-y-2">

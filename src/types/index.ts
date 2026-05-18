@@ -32,6 +32,8 @@ export interface CampaignLog {
   contact_id: string;
   status: CampaignLogStatus;
   sent_at: string | null;
+  /** Données Excel de la ligne au moment de l’import (message personnalisé). */
+  row_data?: Record<string, string>;
 }
 
 export interface ImportedRow {

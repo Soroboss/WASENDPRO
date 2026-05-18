@@ -1,3 +1,4 @@
+import { isValidPhone, normalizeExcelPhone } from "@/lib/phone";
 import type { Contact, ImportedRow } from "@/types";
 
 /** Colonnes du modèle Excel (variables disponibles pour les messages). */
@@ -100,10 +101,62 @@ export function findPhoneFromRow(
 ): string {
   for (const h of headers) {
     if (isPhoneColumnKey(h)) {
-      return (row[h] ?? "").replace(/\D/g, "");
+      return normalizeExcelPhone(row[h] ?? "");
     }
   }
-  return (row[headers[1]] ?? row[headers[0]] ?? "").replace(/\D/g, "");
+  for (const h of headers) {
+    const digits = normalizeExcelPhone(row[h] ?? "");
+    if (isValidPhone(digits)) return digits;
+  }
+  return "";
+}
+
+/** Filtre les lignes importables et déduplique par numéro (1ère occurrence). */
+export function prepareImportRows(
+  headers: string[],
+  rows: ImportedRow[]
+): {
+  rows: ImportedRow[];
+  skippedNoPhone: number;
+  skippedDuplicate: number;
+} {
+  const seen = new Set<string>();
+  const prepared: ImportedRow[] = [];
+  let skippedNoPhone = 0;
+  let skippedDuplicate = 0;
+
+  for (const row of rows) {
+    const phone = findPhoneFromRow(headers, row);
+    if (!isValidPhone(phone)) {
+      skippedNoPhone++;
+      continue;
+    }
+    if (seen.has(phone)) {
+      skippedDuplicate++;
+      continue;
+    }
+    seen.add(phone);
+    prepared.push(row);
+  }
+
+  return { rows: prepared, skippedNoPhone, skippedDuplicate };
+}
+
+export function rowToSnapshot(
+  headers: string[],
+  row: ImportedRow
+): Record<string, string> {
+  const data: Record<string, string> = {};
+  for (const h of headers) {
+    const key = h.trim();
+    if (!key) continue;
+    let value = String(row[h] ?? "").trim();
+    if (isPhoneColumnKey(key)) {
+      value = normalizeExcelPhone(value);
+    }
+    data[key] = value;
+  }
+  return data;
 }
 
 export function findNameFromRow(
