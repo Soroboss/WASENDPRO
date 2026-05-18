@@ -20,14 +20,15 @@ import { createCampaign } from "@/lib/inforge";
 import { compileMessage } from "@/lib/message";
 import { uploadCampaignAttachments } from "@/lib/upload-campaign-attachments";
 import { CampaignAttachmentsField } from "@/components/campaigns/campaign-attachments-field";
+import {
+  CampaignSourcePanel,
+  type CampaignSourceMode,
+} from "@/components/campaigns/campaign-source-panel";
 import type { ExtensionImportPayload } from "@/lib/extension-bridge";
-import type { ImportedRow } from "@/types";
+import type { CampaignFormPrefill, ImportedRow } from "@/types";
 import {
   FileSpreadsheet,
-  Download,
-  Upload,
   Loader2,
-  Users,
   Sparkles,
   Braces,
 } from "lucide-react";
@@ -41,6 +42,8 @@ interface CampaignFormDialogProps {
   /** Données pré-remplies par l’extension Chrome */
   extensionImport?: ExtensionImportPayload | null;
   onExtensionImportConsumed?: () => void;
+  /** Relance, annuaire ou duplication de campagne */
+  prefill?: CampaignFormPrefill | null;
 }
 
 export function CampaignFormDialog({
@@ -49,6 +52,7 @@ export function CampaignFormDialog({
   onCreated,
   extensionImport,
   onExtensionImportConsumed,
+  prefill,
 }: CampaignFormDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { dialCode } = useCountryDial();
@@ -60,6 +64,7 @@ export function CampaignFormDialog({
   const [rows, setRows] = useState<ImportedRow[]>([]);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [importMeta, setImportMeta] = useState<string | null>(null);
+  const [sourceMode, setSourceMode] = useState<CampaignSourceMode>("excel");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +77,7 @@ export function CampaignFormDialog({
     setRawRows([]);
     setAttachmentFiles([]);
     setImportMeta(null);
+    setSourceMode("excel");
     setError(null);
   };
 
@@ -117,6 +123,32 @@ export function CampaignFormDialog({
     }
   }, [dialCode, headers, rawRows, applyRowsWithCountry]);
 
+  const applyPrefill = useCallback(
+    (data: CampaignFormPrefill) => {
+      if (data.name) setName(data.name);
+      if (data.template_message) setMessage(data.template_message);
+      if (data.scheduled_date !== undefined) {
+        setScheduledDate(data.scheduled_date ?? "");
+      }
+      if (data.importedRows && data.columnHeaders) {
+        setHeaders(data.columnHeaders);
+        setRawRows(data.importedRows);
+        applyRowsWithCountry(
+          data.columnHeaders,
+          data.importedRows,
+          data.countryDialCode ?? dialCode
+        );
+        setSourceMode(data.sourceCampaignId ? "relance" : "annuaire");
+      }
+    },
+    [applyRowsWithCountry, dialCode]
+  );
+
+  useEffect(() => {
+    if (!open || !prefill) return;
+    applyPrefill(prefill);
+  }, [open, prefill, applyPrefill]);
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -155,7 +187,9 @@ export function CampaignFormDialog({
       return;
     }
     if (rows.length === 0) {
-      setError("Importez au moins un contact via Excel.");
+      setError(
+        "Ajoutez au moins un contact (Excel, annuaire ou campagne existante)."
+      );
       return;
     }
 
@@ -238,45 +272,31 @@ export function CampaignFormDialog({
           <CountrySelector compact showHint />
 
           <div className="rounded-xl border border-dashed border-border/80 bg-muted/30 p-4 space-y-3">
-            <p className="section-label">Contacts</p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-lg bg-background"
-                onClick={() => downloadExcelTemplate()}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Modèle Excel
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-lg bg-background"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Importer
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={handleImport}
-              />
-              {rows.length > 0 && (
-                <Badge className="gap-1.5 bg-neon/10 text-neon border border-neon/25">
-                  <Users className="h-3.5 w-3.5" />
-                  {rows.length} contact{rows.length > 1 ? "s" : ""}
-                </Badge>
-              )}
-            </div>
-            {importMeta && (
-              <p className="text-xs text-muted-foreground">{importMeta}</p>
-            )}
+            <p className="section-label">Source des contacts</p>
+            <CampaignSourcePanel
+              mode={sourceMode}
+              onModeChange={setSourceMode}
+              dialCode={dialCode}
+              headers={headers}
+              rows={rows}
+              importMeta={importMeta}
+              onDownloadTemplate={() => downloadExcelTemplate()}
+              onExcelImportClick={() => fileInputRef.current?.click()}
+              onDataLoaded={(h, r, meta) => {
+                setHeaders(h);
+                setRawRows(r);
+                applyRowsWithCountry(h, r, dialCode);
+                setImportMeta(meta);
+                setError(r.length === 0 ? meta : null);
+              }}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={handleImport}
+            />
 
             {headers.length > 0 && (
               <div className="rounded-lg border border-white/10 bg-black/20 p-3 space-y-2">

@@ -64,6 +64,18 @@ export interface CreateCampaignInput {
   countryDialCode: string;
 }
 
+/** Préremplissage du formulaire (relance / duplication). */
+export interface CampaignFormPrefill {
+  name?: string;
+  template_message?: string;
+  scheduled_date?: string | null;
+  countryDialCode?: string;
+  sourceCampaignId?: string;
+  relanceFilter?: "all" | "pending" | "sent";
+  importedRows?: ImportedRow[];
+  columnHeaders?: string[];
+}
+
 export interface UpdateContactInput {
   name?: string | null;
   phone?: string;

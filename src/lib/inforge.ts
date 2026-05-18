@@ -6,6 +6,12 @@ import {
   prepareImportRows,
   rowToSnapshot,
 } from "@/lib/contacts";
+import {
+  clearAppSessionCache,
+  getCachedCampaigns,
+  getCachedContacts,
+  invalidateDataCache,
+} from "@/lib/app-cache";
 import { DEFAULT_COUNTRY_DIAL } from "@/lib/countries";
 import { getDefaultCountryDialCode } from "@/lib/country-settings";
 import {
@@ -274,7 +280,7 @@ export async function runPhoneRepairOnce(): Promise<number> {
   return updated;
 }
 
-export async function getContacts(): Promise<Contact[]> {
+async function fetchContactsFromStore(): Promise<Contact[]> {
   const client = getInsforgeClient();
   if (client) {
     const { data, error } = await client.database
@@ -286,6 +292,12 @@ export async function getContacts(): Promise<Contact[]> {
   }
   return readLocalStore().contacts;
 }
+
+export async function getContacts(): Promise<Contact[]> {
+  return getCachedContacts(fetchContactsFromStore);
+}
+
+export { clearAppSessionCache, invalidateDataCache };
 
 export async function upsertContactFromRow(
   row: ImportedRow,
@@ -413,7 +425,7 @@ export async function deleteContact(id: string): Promise<void> {
 
 // ——— Campaigns ———
 
-export async function getCampaigns(): Promise<Campaign[]> {
+async function fetchCampaignsFromStore(): Promise<Campaign[]> {
   const client = getInsforgeClient();
   if (client) {
     const { data, error } = await client.database
@@ -426,6 +438,10 @@ export async function getCampaigns(): Promise<Campaign[]> {
     );
   }
   return readLocalStore().campaigns;
+}
+
+export async function getCampaigns(): Promise<Campaign[]> {
+  return getCachedCampaigns(fetchCampaignsFromStore);
 }
 
 export async function getCampaign(id: string): Promise<Campaign | null> {
@@ -607,6 +623,7 @@ export async function createCampaign(
     }
 
     await insertCampaignLogsBatch(client, logsToInsert);
+    invalidateDataCache();
     return normalizeCampaign({
       ...campaign,
       attachments: input.attachments ?? [],
@@ -638,6 +655,7 @@ export async function createCampaign(
     });
   }
   writeLocalStore(store);
+  invalidateDataCache();
   return campaign;
 }
 
@@ -647,12 +665,14 @@ export async function deleteCampaign(id: string): Promise<void> {
     await client.database.from("campaign_logs").delete().eq("campaign_id", id);
     const { error } = await client.database.from("campaigns").delete().eq("id", id);
     if (error) throw new Error(error.message);
+    invalidateDataCache();
     return;
   }
   const store = readLocalStore();
   store.campaigns = store.campaigns.filter((c) => c.id !== id);
   store.campaign_logs = store.campaign_logs.filter((l) => l.campaign_id !== id);
   writeLocalStore(store);
+  invalidateDataCache();
 }
 
 // ——— Campaign logs ———
@@ -724,6 +744,7 @@ export async function markContactAsSent(
       .select()
       .single();
     if (error) throw new Error(error.message);
+    invalidateDataCache();
     return data as CampaignLog;
   }
 
@@ -738,6 +759,7 @@ export async function markContactAsSent(
     sent_at: now,
   };
   writeLocalStore(store);
+  invalidateDataCache();
   return store.campaign_logs[idx];
 }
 

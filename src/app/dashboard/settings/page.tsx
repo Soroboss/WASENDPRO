@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConnectionStatus } from "@/components/dashboard/connection-status";
 import { CountrySettingsCard } from "@/components/settings/country-settings-card";
+import { AppCacheCard } from "@/components/settings/app-cache-card";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   BookOpen,
@@ -33,9 +34,10 @@ const instructions = [
     title: "Envoyer en sécurité",
     steps: [
       "Ajoutez des pièces jointes (JPEG, PDF, PPT, audio) à la création si besoin.",
-      "Ouvrez la campagne et cliquez « Envoyer » contact par contact.",
+      "Ouvrez la campagne : onglet « À envoyer », bouton « Envoyer le suivant » ou touche N.",
+      "Une fois envoyé, le contact passe dans Archives — la liste reste courte.",
+      "Relance : créez une campagne depuis l'annuaire ou « Relance (non envoyés) ».",
       "Avec pièces jointes : WhatsApp Web s'ouvre et l'extension les ajoute.",
-      "Une fois envoyé, le bouton est grisé — impossible d'envoyer deux fois (anti-doublon).",
       "Exportez le rapport Excel à tout moment pour suivre les statuts.",
     ],
   },
@@ -53,6 +55,8 @@ export default function SettingsPage() {
       <ConnectionStatus />
 
       <CountrySettingsCard />
+
+      <AppCacheCard />
 
       <div className="grid gap-4">
         {instructions.map((section, index) => (

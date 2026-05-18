@@ -13,6 +13,10 @@ import {
   deduplicateContactsByPhone,
   getDisplayCustomKeys,
 } from "@/lib/contacts";
+import { contactsToImportedRows } from "@/lib/campaign-sources";
+import { CampaignFormDialog } from "@/components/campaigns/campaign-form-dialog";
+import { useCountryDial } from "@/hooks/use-country-dial";
+import type { CampaignFormPrefill } from "@/types";
 import {
   filterAndSortContacts,
   filterCampaignGroups,
@@ -40,10 +44,12 @@ import {
   Download,
   FolderKanban,
   Loader2,
+  Megaphone,
   Plus,
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { format } from "date-fns";
 
 const defaultFilters: ContactFilterState = {
   search: "",
@@ -53,7 +59,11 @@ const defaultFilters: ContactFilterState = {
 };
 
 export default function ContactsPage() {
+  const { dialCode } = useCountryDial();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
+  const [campaignPrefill, setCampaignPrefill] =
+    useState<CampaignFormPrefill | null>(null);
   const [campaignGroups, setCampaignGroups] = useState<CampaignContactGroup[]>(
     []
   );
@@ -214,6 +224,21 @@ export default function ContactsPage() {
     setEditOpen(true);
   };
 
+  const openCampaignFromAnnuaire = () => {
+    const list =
+      selectedIds.size > 0
+        ? contacts.filter((c) => selectedIds.has(c.id))
+        : contacts;
+    const { headers, rows } = contactsToImportedRows(list);
+    setCampaignPrefill({
+      name: `Campagne annuaire — ${format(new Date(), "dd/MM/yyyy")}`,
+      countryDialCode: dialCode,
+      columnHeaders: headers,
+      importedRows: rows,
+    });
+    setCampaignDialogOpen(true);
+  };
+
   const handleDelete = async (contact: Contact) => {
     const label = contact.name || contact.phone;
     if (
@@ -256,15 +281,26 @@ export default function ContactsPage() {
               <Download className="h-4 w-4 mr-2" />
               Modèle Excel
             </Button>
+            <Button
+              size="sm"
+              className="rounded-lg btn-whatsapp"
+              onClick={openCampaignFromAnnuaire}
+              disabled={contacts.length === 0}
+            >
+              <Megaphone className="h-4 w-4 mr-2" />
+              {selectedIds.size > 0
+                ? `Campagne (${selectedIds.size})`
+                : "Campagne depuis l'annuaire"}
+            </Button>
             <Link
               href="/dashboard"
               className={cn(
-                buttonVariants({ size: "sm" }),
-                "rounded-lg btn-whatsapp"
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "rounded-lg"
               )}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Nouvelle campagne
+              Toutes les campagnes
             </Link>
           </motion.div>
         }
@@ -285,6 +321,20 @@ export default function ContactsPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         onSaved={load}
+      />
+
+      <CampaignFormDialog
+        open={campaignDialogOpen}
+        onOpenChange={(open) => {
+          setCampaignDialogOpen(open);
+          if (!open) setCampaignPrefill(null);
+        }}
+        onCreated={() => {
+          setCampaignDialogOpen(false);
+          setCampaignPrefill(null);
+          load();
+        }}
+        prefill={campaignPrefill}
       />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
