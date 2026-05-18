@@ -5,14 +5,15 @@ import { APP_NAME } from "@/lib/brand";
 
 const LOGO_SRC = "/logo.png";
 
-type LogoSize = "xs" | "sm" | "md" | "lg" | "xl";
+type LogoSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
 const sizeMap: Record<LogoSize, number> = {
-  xs: 28,
-  sm: 36,
-  md: 44,
-  lg: 56,
-  xl: 80,
+  xs: 32,
+  sm: 44,
+  md: 52,
+  lg: 68,
+  xl: 96,
+  "2xl": 128,
 };
 
 interface LogoProps {
@@ -21,6 +22,9 @@ interface LogoProps {
   href?: string;
   priority?: boolean;
 }
+
+const logoImageClass =
+  "object-contain bg-transparent [background:transparent]";
 
 export function Logo({ size = "md", className, href, priority }: LogoProps) {
   const px = sizeMap[size];
@@ -32,13 +36,13 @@ export function Logo({ size = "md", className, href, priority }: LogoProps) {
       width={px}
       height={px}
       priority={priority}
-      className={cn("object-contain", className)}
+      className={cn(logoImageClass, className)}
     />
   );
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex shrink-0 items-center">
+      <Link href={href} className="inline-flex shrink-0 items-center bg-transparent">
         {image}
       </Link>
     );
@@ -51,7 +55,7 @@ export function Logo({ size = "md", className, href, priority }: LogoProps) {
 export function LogoFull({
   className,
   href,
-  height = 48,
+  height = 56,
   priority,
 }: {
   className?: string;
@@ -63,17 +67,29 @@ export function LogoFull({
     <Image
       src={LOGO_SRC}
       alt={APP_NAME}
-      width={Math.round(height * 2.4)}
+      width={Math.round(height * 2.5)}
       height={height}
       priority={priority}
-      className={cn("object-contain object-left", className)}
-      style={{ height, width: "auto", maxHeight: height }}
+      className={cn(
+        logoImageClass,
+        "object-contain object-center",
+        className
+      )}
+      style={{
+        height,
+        width: "auto",
+        maxHeight: height,
+        minWidth: Math.round(height * 1.8),
+      }}
     />
   );
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex items-center shrink-0">
+      <Link
+        href={href}
+        className="inline-flex items-center justify-center shrink-0 bg-transparent"
+      >
         {image}
       </Link>
     );

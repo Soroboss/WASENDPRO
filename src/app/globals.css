@@ -4,66 +4,38 @@
 
 @layer base {
   :root {
-    --background: 0 0% 99%;
-    --foreground: 160 10% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 160 10% 12%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 160 10% 12%;
-    --primary: 152 69% 38%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 150 20% 96%;
-    --secondary-foreground: 160 10% 20%;
-    --muted: 150 15% 95%;
-    --muted-foreground: 160 8% 46%;
-    --accent: 152 45% 94%;
-    --accent-foreground: 152 69% 28%;
-    --destructive: 0 84% 60%;
+    --background: 222 47% 4%;
+    --foreground: 150 25% 96%;
+    --card: 222 38% 7%;
+    --card-foreground: 150 20% 96%;
+    --popover: 222 38% 8%;
+    --popover-foreground: 150 20% 96%;
+    --primary: 158 96% 48%;
+    --primary-foreground: 222 47% 4%;
+    --secondary: 220 30% 12%;
+    --secondary-foreground: 150 15% 90%;
+    --muted: 220 28% 11%;
+    --muted-foreground: 215 15% 58%;
+    --accent: 185 80% 14%;
+    --accent-foreground: 185 90% 65%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 98%;
-    --border: 150 12% 90%;
-    --input: 150 12% 90%;
-    --ring: 152 69% 38%;
+    --border: 220 25% 16%;
+    --input: 220 25% 14%;
+    --ring: 158 96% 48%;
     --radius: 0.75rem;
-    --sidebar: 0 0% 100%;
-    --sidebar-foreground: 160 10% 12%;
-    --sidebar-primary: 152 69% 38%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 152 45% 96%;
-    --sidebar-accent-foreground: 152 69% 28%;
-    --sidebar-border: 150 12% 92%;
-    --sidebar-ring: 152 69% 38%;
-    --whatsapp: 142 70% 45%;
-    --whatsapp-dark: 152 76% 32%;
-  }
-
-  .dark {
-    --background: 160 15% 7%;
-    --foreground: 150 10% 96%;
-    --card: 160 12% 10%;
-    --card-foreground: 150 10% 96%;
-    --popover: 160 12% 10%;
-    --popover-foreground: 150 10% 96%;
-    --primary: 142 70% 45%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 160 10% 16%;
-    --secondary-foreground: 150 10% 96%;
-    --muted: 160 10% 16%;
-    --muted-foreground: 150 8% 58%;
-    --accent: 152 30% 14%;
-    --accent-foreground: 142 70% 55%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 160 10% 18%;
-    --input: 160 10% 18%;
-    --ring: 142 70% 45%;
-    --sidebar: 160 12% 9%;
-    --sidebar-foreground: 150 10% 96%;
-    --sidebar-primary: 142 70% 45%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 152 25% 14%;
-    --sidebar-accent-foreground: 142 70% 55%;
-    --sidebar-border: 160 10% 16%;
-    --sidebar-ring: 142 70% 45%;
+    --sidebar: 222 42% 5%;
+    --sidebar-foreground: 150 20% 92%;
+    --sidebar-primary: 158 96% 48%;
+    --sidebar-primary-foreground: 222 47% 4%;
+    --sidebar-accent: 220 30% 12%;
+    --sidebar-accent-foreground: 158 90% 55%;
+    --sidebar-border: 220 28% 14%;
+    --sidebar-ring: 158 96% 48%;
+    --neon: 158 96% 48%;
+    --cyan-neon: 185 90% 55%;
+    --whatsapp: 158 96% 48%;
+    --whatsapp-dark: 158 80% 38%;
   }
 
   * {
@@ -72,29 +44,52 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(ellipse 100% 80% at 50% -30%, hsl(158 96% 48% / 0.08), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 100% 50%, hsl(185 90% 55% / 0.04), transparent),
+      hsl(var(--background));
   }
 }
 
 @layer components {
+  .cyber-grid {
+    background-image:
+      linear-gradient(hsl(158 96% 48% / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(158 96% 48% / 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .glass-panel {
+    @apply border border-white/[0.08] bg-card/60 backdrop-blur-xl shadow-glass;
+  }
+
+  .card-futurist {
+    @apply rounded-xl border border-white/[0.08] bg-card/50 backdrop-blur-md
+      shadow-glass transition-all duration-300
+      hover:border-neon/25 hover:shadow-glow;
+  }
+
+  .neon-text {
+    @apply bg-gradient-to-r from-neon via-cyan-neon to-neon bg-clip-text text-transparent;
+    background-size: 200% auto;
+    animation: shimmer 4s linear infinite;
+  }
+
   .dashboard-shell {
     @apply relative min-h-screen;
-    background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(152 69% 38% / 0.06), transparent),
-      hsl(var(--background));
   }
 
   .card-elevated {
-    @apply rounded-xl border border-border/60 bg-card shadow-sm shadow-black/[0.03]
-      transition-all duration-200 hover:shadow-md hover:shadow-black/[0.05] hover:border-border;
+    @apply card-futurist;
   }
 
   .dialog-premium {
-    @apply sm:max-w-2xl rounded-2xl border border-border/50 p-0 gap-0 overflow-hidden
-      shadow-2xl shadow-black/10 ring-1 ring-black/5;
+    @apply sm:max-w-2xl rounded-2xl border border-white/10 p-0 gap-0 overflow-hidden
+      bg-card/95 backdrop-blur-xl shadow-2xl shadow-black/40 ring-1 ring-neon/10;
   }
 
   .dialog-premium-header {
-    @apply px-6 pt-6 pb-4 border-b border-border/50 bg-gradient-to-b from-muted/40 to-transparent;
+    @apply px-6 pt-6 pb-4 border-b border-white/10 bg-gradient-to-b from-neon/5 to-transparent;
   }
 
   .dialog-premium-body {
@@ -102,17 +97,29 @@
   }
 
   .dialog-premium-footer {
-    @apply px-6 py-4 border-t border-border/50 bg-muted/30 flex gap-3 justify-end;
+    @apply px-6 py-4 border-t border-white/10 bg-muted/30 flex gap-3 justify-end;
   }
 
   .btn-whatsapp {
-    @apply bg-[hsl(142,70%,45%)] text-white shadow-sm shadow-[hsl(142,70%,45%)]/25
-      hover:bg-[hsl(152,76%,32%)] hover:shadow-md hover:shadow-[hsl(142,70%,45%)]/30
-      transition-all duration-200;
+    @apply relative overflow-hidden bg-neon text-primary-foreground font-medium
+      shadow-glow hover:shadow-glow-lg transition-all duration-300
+      hover:brightness-110;
+  }
+
+  .btn-whatsapp::before {
+    content: "";
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent
+      -translate-x-full;
+    animation: shine 3s ease-in-out infinite;
+  }
+
+  .btn-neon-outline {
+    @apply border border-neon/40 bg-neon/5 text-neon backdrop-blur-sm
+      hover:bg-neon/15 hover:border-neon/60 hover:shadow-glow transition-all duration-300;
   }
 
   .page-title {
-    @apply text-2xl font-semibold tracking-tight text-foreground;
+    @apply text-2xl font-semibold tracking-tight text-foreground font-display;
   }
 
   .page-subtitle {
@@ -120,12 +127,35 @@
   }
 
   .input-soft {
-    @apply rounded-lg border-border/80 bg-background shadow-sm
-      focus-visible:ring-2 focus-visible:ring-[hsl(142,70%,45%)]/30 focus-visible:border-[hsl(142,70%,45%)]/50;
+    @apply rounded-lg border-white/10 bg-background/80 shadow-sm backdrop-blur-sm
+      focus-visible:ring-2 focus-visible:ring-neon/40 focus-visible:border-neon/50;
   }
 
   .section-label {
-    @apply text-xs font-medium uppercase tracking-wider text-muted-foreground;
+    @apply text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground;
+  }
+
+  .progress-neon {
+    @apply h-1.5 rounded-full bg-muted/80 overflow-hidden;
+  }
+
+  .progress-neon-fill {
+    @apply h-full rounded-full bg-gradient-to-r from-neon via-cyan-neon to-neon
+      shadow-glow transition-all duration-700 ease-out;
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+  }
+
+  .status-pill-connected {
+    @apply glass-panel border-neon/30 bg-neon/5 text-neon;
+  }
+
+  .status-pill-demo {
+    @apply glass-panel border-amber-500/30 bg-amber-500/5 text-amber-400;
+  }
+
+  .status-pill-error {
+    @apply glass-panel border-destructive/40 bg-destructive/5 text-destructive;
   }
 }
 
@@ -133,4 +163,22 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  .font-display {
+    font-family: var(--font-display), system-ui, sans-serif;
+  }
+
+  .font-mono-data {
+    font-family: var(--font-mono), ui-monospace, monospace;
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes shine {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
 }

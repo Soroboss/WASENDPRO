@@ -1,0 +1,38 @@
+---
+description: Backend InsForge WASENDPRO — MCP, CLI et SDK
+alwaysApply: true
+---
+
+# InsForge — WASENDPRO
+
+## Projet lié
+
+- **Nom** : WASENDPRO
+- **URL API** : `https://367srcsp.eu-central.insforge.app`
+- **Tables** : `contacts`, `campaigns`, `campaign_logs`
+- **Schéma SQL** : `supabase/schema.sql`
+
+## Outils agent (ordre recommandé)
+
+1. **MCP `user-insforge`** — métadonnées, schéma, SQL, buckets, functions, docs (`fetch-docs`, `get-backend-metadata`)
+2. **CLI** — `npx @insforge/cli` (jamais d’install global) : `current`, `metadata --json`, `db query`, `db import`
+3. **SDK app** — `src/lib/inforge.ts` avec `createClient` et variables `NEXT_PUBLIC_INSFORGE_*`
+
+Avant tout code InsForge : appeler `fetch-docs` ou `fetch-sdk-docs`.
+
+## Variables d’environnement
+
+- **Frontend (public)** : `NEXT_PUBLIC_INSFORGE_URL`, `NEXT_PUBLIC_INSFORGE_ANON_KEY` dans `.env.local`
+- **MCP / CLI (secret)** : clé API admin dans `~/.cursor/mcp.json` et `.insforge/project.json` — **jamais** dans le code client ni `NEXT_PUBLIC_*`
+
+Régénérer la clé anon : `npx @insforge/cli secrets get ANON_KEY`
+
+## Patterns code
+
+- Réponses SDK : `{ data, error }`
+- Insert : tableau `[{ ... }]`
+- Données campagnes/contacts : passer par `src/lib/inforge.ts` (fallback localStorage si env absent)
+
+## Skills projet
+
+`.agents/skills/insforge*`, `insforge-cli`, `insforge-debug`, `insforge-backend-advisor`

@@ -27,7 +27,7 @@ export function PageHeader({
       <div className="space-y-1">
         <h1 className="page-title flex items-center gap-2.5">
           {Icon && (
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-[hsl(142,70%,38%)]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-neon/25 bg-neon/10 text-neon shadow-glow">
               <Icon className="h-5 w-5" />
             </span>
           )}

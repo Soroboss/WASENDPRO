@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
 import {
   getCampaigns,
   getContacts,
   isUsingLocalStorage,
 } from "@/lib/inforge";
-import { AlertTriangle, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Wifi } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Status = "loading" | "connected" | "demo" | "error";
 
-/** Affiche un bandeau uniquement en cas de problème — rien quand tout fonctionne. */
 export function ConnectionStatus() {
   const [status, setStatus] = useState<Status>("loading");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -36,35 +36,58 @@ export function ConnectionStatus() {
     check();
   }, [isDemo]);
 
-  if (status === "loading" || status === "connected") {
-    return null;
-  }
-
-  if (status === "demo") {
+  if (status === "loading") {
     return (
-      <Card className="border-amber-200/80 bg-amber-50/80 dark:bg-amber-950/30">
-        <CardContent className="flex items-start gap-3 py-4 text-sm text-amber-900 dark:text-amber-100">
-          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-          <p>
-            Les données sont enregistrées uniquement sur cet appareil. Pour une
-            synchronisation cloud, contactez votre administrateur.
-          </p>
-        </CardContent>
-      </Card>
+      <motion.div
+        className="h-12 rounded-xl border border-white/10 bg-card/40 animate-pulse"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      />
     );
   }
 
+  const configs = {
+    connected: {
+      pill: "status-pill-connected",
+      icon: CheckCircle2,
+      title: "InsForge connecté",
+      text: "Campagnes et contacts synchronisés dans le cloud.",
+    },
+    demo: {
+      pill: "status-pill-demo",
+      icon: AlertTriangle,
+      title: "Mode local",
+      text: "Données sur cet appareil uniquement. Configurez InsForge pour le cloud.",
+    },
+    error: {
+      pill: "status-pill-error",
+      icon: XCircle,
+      title: "Connexion impossible",
+      text: errorMsg,
+    },
+  };
+
+  const cfg = configs[status as keyof typeof configs];
+  if (!cfg) return null;
+
+  const Icon = cfg.icon;
+
   return (
-    <Card className="border-destructive/30 bg-destructive/5">
-      <CardContent className="flex items-start gap-3 py-4 text-sm">
-        <XCircle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
-        <div>
-          <p className="font-medium text-destructive">
-            Connexion au serveur impossible
-          </p>
-          <p className="text-muted-foreground mt-1">{errorMsg}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn("flex items-start gap-3 rounded-xl px-4 py-3.5 text-sm", cfg.pill)}
+    >
+      <Icon className="h-5 w-5 shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="font-medium flex items-center gap-2">
+          {cfg.title}
+          {status === "connected" && (
+            <Wifi className="h-3.5 w-3.5 opacity-70" />
+          )}
+        </p>
+        <p className="mt-0.5 opacity-80 text-xs leading-relaxed">{cfg.text}</p>
+      </div>
+    </motion.div>
   );
 }

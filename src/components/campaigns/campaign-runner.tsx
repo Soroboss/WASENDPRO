@@ -177,14 +177,14 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
         }
       />
 
-      <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+      <div className="glass-panel rounded-xl p-4">
         <div className="flex items-center justify-between text-sm mb-2">
-          <span className="text-muted-foreground">Progression</span>
-          <span className="font-semibold text-[hsl(142,70%,38%)]">{progress}%</span>
+          <span className="section-label">Progression</span>
+          <span className="font-mono font-semibold text-neon">{progress}%</span>
         </div>
-        <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div className="progress-neon">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-whatsapp to-whatsapp-dark transition-all duration-500"
+            className="progress-neon-fill"
             style={{ width: `${progress}%` }}
           />
         </div>

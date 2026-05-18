@@ -21,7 +21,7 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function isInsforgeConfigured(): boolean {
+export function isInsforgeConfigured(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_INSFORGE_URL &&
       process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY

@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { CampaignFormDialog } from "@/components/campaigns/campaign-form-dialog";
 import { ConnectionStatus } from "@/components/dashboard/connection-status";
-import { getCampaigns, deleteCampaign } from "@/lib/inforge";
+import { DashboardStats } from "@/components/dashboard/dashboard-stats";
+import { getCampaigns, deleteCampaign, getContacts } from "@/lib/inforge";
 import type { Campaign } from "@/types";
 import {
   Plus,
@@ -23,14 +24,19 @@ import {
 
 export default function DashboardPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [contactCount, setContactCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getCampaigns();
+      const [data, contacts] = await Promise.all([
+        getCampaigns(),
+        getContacts(),
+      ]);
       setCampaigns(data);
+      setContactCount(contacts.length);
     } finally {
       setLoading(false);
     }
@@ -67,15 +73,22 @@ export default function DashboardPage() {
 
       <ConnectionStatus />
 
+      {!loading && (
+        <DashboardStats
+          campaignCount={campaigns.length}
+          contactCount={contactCount}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-24">
-          <Loader2 className="h-9 w-9 animate-spin text-muted-foreground/60" />
+          <Loader2 className="h-9 w-9 animate-spin text-neon/60" />
         </div>
       ) : campaigns.length === 0 ? (
-        <Card className="card-elevated border-dashed">
+        <Card className="card-futurist border-dashed border-neon/20">
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent mb-5">
-              <Megaphone className="h-8 w-8 text-[hsl(142,70%,38%)]" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-neon/25 bg-neon/10 mb-5 shadow-glow">
+              <Megaphone className="h-8 w-8 text-neon" />
             </div>
             <p className="font-semibold text-lg">Aucune campagne</p>
             <p className="text-sm text-muted-foreground mt-2 mb-8 max-w-sm">
@@ -98,10 +111,10 @@ export default function DashboardPage() {
               href={`/dashboard/campaigns/${campaign.id}`}
               className="block group"
             >
-              <Card className="card-elevated h-full cursor-pointer group-hover:border-[hsl(142,70%,45%)]/30">
+              <Card className="card-futurist h-full cursor-pointer group-hover:border-neon/40 group-hover:shadow-glow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base font-semibold group-hover:text-[hsl(142,70%,38%)] transition-colors line-clamp-1">
+                    <CardTitle className="text-base font-semibold font-display group-hover:text-neon transition-colors line-clamp-1">
                       {campaign.name}
                     </CardTitle>
                     <Button
@@ -115,7 +128,7 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed bg-muted/50 rounded-lg p-3 font-mono">
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed bg-black/30 border border-white/5 rounded-lg p-3 font-mono">
                     {campaign.template_message}
                   </p>
                   <div className="flex items-center justify-between">
@@ -129,12 +142,12 @@ export default function DashboardPage() {
                       {campaign.scheduled_date && (
                         <Badge
                           variant="outline"
-                          className="text-[10px] rounded-md border-[hsl(142,70%,45%)]/30 text-[hsl(142,70%,38%)]"
+                          className="text-[10px] rounded-md border-neon/30 text-neon bg-neon/5"
                         >
                           Programmée
                         </Badge>
                       )}
-                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-[hsl(142,70%,38%)] group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-neon group-hover:translate-x-0.5 transition-all" />
                     </div>
                   </div>
                 </CardContent>
