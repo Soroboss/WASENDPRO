@@ -86,7 +86,7 @@ export function Hero() {
           className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto text-balance"
         >
           Import Excel, variables dynamiques, envoi sécurisé via wa.me et
-          synchronisation cloud InsForge — sans API officielle.
+          synchronisation cloud — sans API officielle.
         </motion.p>
 
         <motion.div

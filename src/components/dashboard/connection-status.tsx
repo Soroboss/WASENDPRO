@@ -7,14 +7,13 @@ import {
   getContacts,
   isUsingLocalStorage,
 } from "@/lib/inforge";
-import { AlertTriangle, CheckCircle2, XCircle, Wifi } from "lucide-react";
+import { AlertTriangle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Status = "loading" | "connected" | "demo" | "error";
 
 export function ConnectionStatus() {
   const [status, setStatus] = useState<Status>("loading");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const isDemo = isUsingLocalStorage();
 
   useEffect(() => {
@@ -26,44 +25,30 @@ export function ConnectionStatus() {
       try {
         await Promise.all([getCampaigns(), getContacts()]);
         setStatus("connected");
-      } catch (err) {
-        setErrorMsg(
-          err instanceof Error ? err.message : "Impossible de charger les données."
-        );
+      } catch {
         setStatus("error");
       }
     }
     check();
   }, [isDemo]);
 
-  if (status === "loading") {
-    return (
-      <motion.div
-        className="h-12 rounded-xl border border-white/10 bg-card/40 animate-pulse"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      />
-    );
+  // En production : rien si tout va bien — pas de bandeau technique pour l'utilisateur.
+  if (status === "loading" || status === "connected") {
+    return null;
   }
 
   const configs = {
-    connected: {
-      pill: "status-pill-connected",
-      icon: CheckCircle2,
-      title: "InsForge connecté",
-      text: "Campagnes et contacts synchronisés dans le cloud.",
-    },
     demo: {
       pill: "status-pill-demo",
       icon: AlertTriangle,
-      title: "Mode local",
-      text: "Données sur cet appareil uniquement. Configurez InsForge pour le cloud.",
+      title: "Mode hors ligne",
+      text: "Vos données sont enregistrées uniquement sur cet appareil.",
     },
     error: {
       pill: "status-pill-error",
       icon: XCircle,
-      title: "Connexion impossible",
-      text: errorMsg,
+      title: "Chargement impossible",
+      text: "Impossible d'accéder à vos campagnes. Réessayez dans quelques instants.",
     },
   };
 
@@ -80,12 +65,7 @@ export function ConnectionStatus() {
     >
       <Icon className="h-5 w-5 shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
-        <p className="font-medium flex items-center gap-2">
-          {cfg.title}
-          {status === "connected" && (
-            <Wifi className="h-3.5 w-3.5 opacity-70" />
-          )}
-        </p>
+        <p className="font-medium">{cfg.title}</p>
         <p className="mt-0.5 opacity-80 text-xs leading-relaxed">{cfg.text}</p>
       </div>
     </motion.div>

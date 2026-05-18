@@ -1,9 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Megaphone, Users, Zap, Cloud } from "lucide-react";
+import { Megaphone, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isUsingLocalStorage } from "@/lib/inforge";
 
 interface DashboardStatsProps {
   campaignCount: number;
@@ -24,8 +23,6 @@ export function DashboardStats({
   campaignCount,
   contactCount,
 }: DashboardStatsProps) {
-  const isCloud = !isUsingLocalStorage();
-
   const stats = [
     {
       label: "Campagnes",
@@ -39,13 +36,6 @@ export function DashboardStats({
       icon: Users,
       accent: "text-cyan-neon",
     },
-    {
-      label: "Mode",
-      value: isCloud ? "Cloud" : "Local",
-      icon: isCloud ? Cloud : Zap,
-      accent: isCloud ? "text-neon" : "text-amber-400",
-      sub: isCloud ? "InsForge sync" : "Hors ligne",
-    },
   ];
 
   return (
@@ -53,7 +43,7 @@ export function DashboardStats({
       variants={container}
       initial="hidden"
       animate="show"
-      className="grid gap-3 sm:grid-cols-3"
+      className="grid gap-3 sm:grid-cols-2"
     >
       {stats.map((stat) => (
         <motion.div
@@ -81,11 +71,6 @@ export function DashboardStats({
               <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-foreground">
                 {stat.value}
               </p>
-              {stat.sub && (
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {stat.sub}
-                </p>
-              )}
             </div>
             <motion.span
               className={cn(
