@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   deleteContact,
@@ -7,24 +8,46 @@ import {
   getContactsSorted,
   runPhoneRepairOnce,
 } from "@/lib/inforge";
-import { downloadExcelTemplate } from "@/lib/excel";
+import { downloadExcelTemplate, exportContactsToExcel } from "@/lib/excel";
 import { getCustomFieldKeys } from "@/lib/contacts";
+import {
+  filterAndSortContacts,
+  filterCampaignGroups,
+  getDialCounts,
+  type CampaignStatusFilter,
+  type ContactFilterState,
+  type ContactSort,
+  type HasNameFilter,
+} from "@/lib/contact-filters";
 import type { CampaignContactGroup, Contact } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContactFormDialog } from "@/components/contacts/contact-form-dialog";
 import { ContactsDirectoryTable } from "@/components/contacts/contacts-directory-table";
 import { ContactsByCampaignView } from "@/components/contacts/contacts-by-campaign-view";
+import { ContactsStats } from "@/components/contacts/contacts-stats";
+import { ContactsToolbar } from "@/components/contacts/contacts-toolbar";
+import { ContactsCampaignToolbar } from "@/components/contacts/contacts-campaign-toolbar";
 import {
   BookUser,
   Download,
   FolderKanban,
   Loader2,
+  Plus,
   Users,
 } from "lucide-react";
+import Link from "next/link";
+
+const defaultFilters: ContactFilterState = {
+  search: "",
+  dialCode: "",
+  sort: "phone",
+  hasName: "all",
+};
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -35,7 +58,16 @@ export default function ContactsPage() {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [tab, setTab] = useState("directory");
+
+  const [filters, setFilters] = useState<ContactFilterState>(defaultFilters);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const [campaignSearch, setCampaignSearch] = useState("");
+  const [campaignIdFilter, setCampaignIdFilter] = useState("");
+  const [campaignStatus, setCampaignStatus] =
+    useState<CampaignStatusFilter>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,13 +93,113 @@ export default function ContactsPage() {
     load();
   }, [load]);
 
-  const customKeys = useMemo(() => getCustomFieldKeys(contacts), [contacts]);
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filters, tab]);
 
-  const totalInCampaigns = useMemo(
-    () =>
-      campaignGroups.reduce((sum, g) => sum + g.entries.length, 0),
-    [campaignGroups]
+  const customKeys = useMemo(() => getCustomFieldKeys(contacts), [contacts]);
+  const dialCounts = useMemo(() => getDialCounts(contacts), [contacts]);
+
+  const filteredContacts = useMemo(
+    () => filterAndSortContacts(contacts, filters),
+    [contacts, filters]
   );
+
+  const filteredCampaignGroups = useMemo(
+    () =>
+      filterCampaignGroups(campaignGroups, {
+        search: campaignSearch,
+        campaignId: campaignIdFilter,
+        status: campaignStatus,
+      }),
+    [campaignGroups, campaignSearch, campaignIdFilter, campaignStatus]
+  );
+
+  const visibleCampaignCount = useMemo(
+    () =>
+      filteredCampaignGroups.reduce((s, g) => s + g.entries.length, 0),
+    [filteredCampaignGroups]
+  );
+
+  const withName = useMemo(
+    () => contacts.filter((c) => c.name?.trim()).length,
+    [contacts]
+  );
+
+  const selectedContacts = useMemo(
+    () => contacts.filter((c) => selectedIds.has(c.id)),
+    [contacts, selectedIds]
+  );
+
+  const allVisibleSelected =
+    filteredContacts.length > 0 &&
+    filteredContacts.every((c) => selectedIds.has(c.id));
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filteredContacts.forEach((c) => next.delete(c.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filteredContacts.forEach((c) => next.add(c.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkCopy = async () => {
+    const phones = selectedContacts.map((c) => c.phone).join("\n");
+    try {
+      await navigator.clipboard.writeText(phones);
+    } catch {
+      alert("Impossible de copier dans le presse-papiers.");
+    }
+  };
+
+  const handleBulkExport = () => {
+    const list =
+      selectedContacts.length > 0 ? selectedContacts : filteredContacts;
+    exportContactsToExcel(
+      list,
+      `annuaire_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedContacts.length === 0) return;
+    if (
+      !confirm(
+        `Supprimer ${selectedContacts.length} contact(s) ?\nLes entrées de campagne liées seront aussi retirées.`
+      )
+    ) {
+      return;
+    }
+    setBulkBusy(true);
+    try {
+      for (const c of selectedContacts) {
+        await deleteContact(c.id);
+      }
+      setSelectedIds(new Set());
+      await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Suppression impossible.");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const handleEdit = (contact: Contact) => {
     setEditingContact(contact);
@@ -86,6 +218,11 @@ export default function ContactsPage() {
     setDeletingId(contact.id);
     try {
       await deleteContact(contact.id);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(contact.id);
+        return next;
+      });
       await load();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Suppression impossible.");
@@ -95,13 +232,13 @@ export default function ContactsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Annuaire"
-        description="Tous vos numéros classés, ou regroupés par campagne"
+        description="Gérez vos contacts, filtrez et lancez des actions groupées"
         icon={BookUser}
         action={
-          <div className="flex flex-wrap items-center gap-2">
+          <motion.div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -111,16 +248,28 @@ export default function ContactsPage() {
               <Download className="h-4 w-4 mr-2" />
               Modèle Excel
             </Button>
-            <Badge
-              variant="secondary"
-              className="rounded-lg px-3 py-1.5 text-sm font-medium gap-1.5"
+            <Link
+              href="/dashboard"
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "rounded-lg btn-whatsapp"
+              )}
             >
-              <Users className="h-3.5 w-3.5" />
-              {contacts.length} numéro{contacts.length !== 1 ? "s" : ""}
-            </Badge>
-          </div>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle campagne
+            </Link>
+          </motion.div>
         }
       />
+
+      {!loading && (
+        <ContactsStats
+          totalContacts={contacts.length}
+          campaignCount={campaignGroups.length}
+          withName={withName}
+          withoutName={contacts.length - withName}
+        />
+      )}
 
       <ContactFormDialog
         contact={editingContact}
@@ -131,89 +280,190 @@ export default function ContactsPage() {
       />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="rounded-xl h-10 p-1 bg-muted/50 border border-border/50">
-          <TabsTrigger value="directory" className="rounded-lg gap-2 px-4">
+        <TabsList className="rounded-xl h-11 p-1 bg-muted/40 border border-border/50 w-full sm:w-auto">
+          <TabsTrigger
+            value="directory"
+            className="rounded-lg gap-2 px-5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+          >
             <BookUser className="h-4 w-4" />
             Annuaire global
-            <Badge variant="outline" className="ml-1 h-5 px-1.5 text-[10px]">
+            <Badge
+              variant="secondary"
+              className="ml-1 h-5 px-1.5 text-[10px] font-mono"
+            >
               {contacts.length}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="campaigns" className="rounded-lg gap-2 px-4">
+          <TabsTrigger
+            value="campaigns"
+            className="rounded-lg gap-2 px-5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+          >
             <FolderKanban className="h-4 w-4" />
             Par campagne
-            <Badge variant="outline" className="ml-1 h-5 px-1.5 text-[10px]">
+            <Badge
+              variant="secondary"
+              className="ml-1 h-5 px-1.5 text-[10px] font-mono"
+            >
               {campaignGroups.length}
             </Badge>
           </TabsTrigger>
         </TabsList>
 
         {loading ? (
-          <div className="flex justify-center py-24">
-            <Loader2 className="h-9 w-9 animate-spin text-neon/60" />
-          </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-28 gap-3"
+          >
+            <Loader2 className="h-10 w-10 animate-spin text-neon/60" />
+            <p className="text-sm text-muted-foreground">
+              Chargement de l&apos;annuaire…
+            </p>
+          </motion.div>
         ) : (
           <>
-            <TabsContent value="directory" className="mt-6">
+            <TabsContent value="directory" className="mt-5 space-y-4">
+              {contacts.length > 0 && (
+                <ContactsToolbar
+                  search={filters.search}
+                  onSearchChange={(search) =>
+                    setFilters((f) => ({ ...f, search }))
+                  }
+                  dialCode={filters.dialCode}
+                  onDialCodeChange={(dialCode) =>
+                    setFilters((f) => ({ ...f, dialCode }))
+                  }
+                  sort={filters.sort}
+                  onSortChange={(sort) =>
+                    setFilters((f) => ({ ...f, sort: sort as ContactSort }))
+                  }
+                  hasName={filters.hasName}
+                  onHasNameChange={(hasName) =>
+                    setFilters((f) => ({
+                      ...f,
+                      hasName: hasName as HasNameFilter,
+                    }))
+                  }
+                  dialCounts={dialCounts}
+                  filteredCount={filteredContacts.length}
+                  totalCount={contacts.length}
+                  selectedCount={selectedContacts.length}
+                  onSelectAll={handleSelectAllVisible}
+                  onClearSelection={() => setSelectedIds(new Set())}
+                  allVisibleSelected={allVisibleSelected}
+                  onBulkDelete={handleBulkDelete}
+                  onBulkCopy={handleBulkCopy}
+                  onBulkExport={handleBulkExport}
+                  bulkBusy={bulkBusy}
+                />
+              )}
+
               {contacts.length === 0 ? (
-                <Card className="card-futurist border-dashed border-neon/20">
-                  <CardContent className="py-20 text-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-neon/25 bg-neon/10 mx-auto mb-5 shadow-glow">
-                      <BookUser className="h-8 w-8 text-neon" />
+                <Card className="card-futurist border-dashed border-neon/25">
+                  <CardContent className="py-24 text-center">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-neon/30 bg-gradient-to-br from-neon/15 to-cyan-neon/5 mx-auto mb-6 shadow-glow">
+                      <Users className="h-10 w-10 text-neon" />
                     </div>
-                    <p className="font-semibold">Aucun contact</p>
-                    <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
-                      Importez un fichier Excel lors d&apos;une campagne. Les
-                      numéros seront triés ici automatiquement.
+                    <h2 className="text-xl font-semibold">Votre annuaire est vide</h2>
+                    <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
+                      Importez un fichier Excel lors d&apos;une campagne. Tous
+                      vos numéros seront classés et filtrables ici.
                     </p>
-                    <Button
-                      className="mt-6 btn-whatsapp rounded-lg"
-                      onClick={() => downloadExcelTemplate()}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Télécharger le modèle
-                    </Button>
+                    <div className="flex flex-wrap justify-center gap-3 mt-8">
+                      <Button
+                        className="btn-whatsapp rounded-xl"
+                        onClick={() => downloadExcelTemplate()}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Modèle Excel
+                      </Button>
+                      <Link
+                        href="/dashboard"
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "rounded-xl btn-neon-outline inline-flex items-center"
+                        )}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Créer une campagne
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : filteredContacts.length === 0 ? (
+                <Card className="card-futurist border-dashed">
+                  <CardContent className="py-16 text-center">
+                    <p className="font-medium">Aucun résultat</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Modifiez ou réinitialisez les filtres ci-dessus.
+                    </p>
                   </CardContent>
                 </Card>
               ) : (
                 <ContactsDirectoryTable
-                  contacts={contacts}
+                  contacts={filteredContacts}
                   customKeys={customKeys}
                   deletingId={deletingId}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
+                  onToggleSelectAll={handleSelectAllVisible}
+                  allSelected={allVisibleSelected}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                 />
               )}
             </TabsContent>
 
-            <TabsContent value="campaigns" className="mt-6">
+            <TabsContent value="campaigns" className="mt-5 space-y-4">
+              {campaignGroups.length > 0 && (
+                <ContactsCampaignToolbar
+                  groups={campaignGroups}
+                  search={campaignSearch}
+                  onSearchChange={setCampaignSearch}
+                  campaignId={campaignIdFilter}
+                  onCampaignIdChange={setCampaignIdFilter}
+                  status={campaignStatus}
+                  onStatusChange={setCampaignStatus}
+                  visibleCount={visibleCampaignCount}
+                />
+              )}
+
               {campaignGroups.length === 0 ? (
-                <Card className="card-futurist border-dashed border-neon/20">
-                  <CardContent className="py-20 text-center">
-                    <FolderKanban className="h-10 w-10 text-neon mx-auto mb-4" />
-                    <p className="font-semibold">Aucune campagne avec contacts</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Créez une campagne et importez un fichier Excel.
+                <Card className="card-futurist border-dashed border-neon/25">
+                  <CardContent className="py-24 text-center">
+                    <FolderKanban className="h-12 w-12 text-neon mx-auto mb-4 opacity-80" />
+                    <h2 className="text-lg font-semibold">
+                      Aucune campagne avec contacts
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
+                      Créez une campagne et importez un fichier Excel pour voir
+                      vos contacts regroupés ici.
                     </p>
+                    <Link
+                      href="/dashboard"
+                      className={cn(
+                        buttonVariants(),
+                        "mt-6 btn-whatsapp rounded-xl inline-flex items-center"
+                      )}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nouvelle campagne
+                    </Link>
+                  </CardContent>
+                </Card>
+              ) : filteredCampaignGroups.length === 0 ? (
+                <Card className="card-futurist border-dashed">
+                  <CardContent className="py-16 text-center text-muted-foreground">
+                    Aucune entrée ne correspond aux filtres.
                   </CardContent>
                 </Card>
               ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {totalInCampaigns} entrée
-                    {totalInCampaigns > 1 ? "s" : ""} répartie
-                    {totalInCampaigns > 1 ? "s" : ""} dans{" "}
-                    {campaignGroups.length} campagne
-                    {campaignGroups.length > 1 ? "s" : ""} — numéros triés dans
-                    chaque liste.
-                  </p>
-                  <ContactsByCampaignView
-                    groups={campaignGroups}
-                    deletingId={deletingId}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                </>
+                <ContactsByCampaignView
+                  groups={filteredCampaignGroups}
+                  deletingId={deletingId}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
               )}
             </TabsContent>
           </>

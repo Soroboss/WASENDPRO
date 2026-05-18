@@ -199,4 +199,24 @@ export function exportCampaignReport(
   XLSX.writeFile(wb, filename);
 }
 
+/** Exporte une sélection de contacts en Excel. */
+export function exportContactsToExcel(
+  contacts: { name?: string | null; phone: string; custom_data?: Record<string, string>; created_at?: string }[],
+  filename = "annuaire_export.xlsx"
+): void {
+  const ws = XLSX.utils.json_to_sheet(
+    contacts.map((c) => ({
+      Nom: c.name ?? "",
+      Téléphone: c.phone,
+      ...(c.custom_data ?? {}),
+      "Ajouté le": c.created_at
+        ? new Date(c.created_at).toLocaleDateString("fr-FR")
+        : "",
+    }))
+  );
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Contacts");
+  XLSX.writeFile(wb, filename);
+}
+
 export { TEMPLATE_HEADERS };
