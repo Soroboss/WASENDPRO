@@ -54,6 +54,65 @@ export function downloadExcelTemplate(filename = "modele_contacts.xlsx"): void {
   XLSX.writeFile(wb, filename);
 }
 
+/** Lit une cellule en privilégiant le texte affiché (conserve les 0 initiaux). */
+function readExcelCell(sheet: XLSX.WorkSheet, row: number, col: number): string {
+  const ref = XLSX.utils.encode_cell({ r: row, c: col });
+  const cell = sheet[ref];
+  if (!cell) return "";
+
+  if (cell.w != null && String(cell.w).trim() !== "") {
+    return String(cell.w).trim();
+  }
+
+  const v = cell.v;
+  if (v == null) return "";
+  if (typeof v === "number" && Number.isFinite(v)) {
+    return normalizeExcelPhone(String(Math.round(v)));
+  }
+  return String(v).trim();
+}
+
+/** Extraction ligne à ligne pour ne pas perdre les zéros des colonnes téléphone. */
+function extractSheetRows(sheet: XLSX.WorkSheet): {
+  headers: string[];
+  rows: ImportedRow[];
+} {
+  const ref = sheet["!ref"];
+  if (!ref) return { headers: [], rows: [] };
+
+  const range = XLSX.utils.decode_range(ref);
+  const headerRow = range.s.r;
+  const headers: string[] = [];
+
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    const h = readExcelCell(sheet, headerRow, c).trim();
+    headers.push(h || `Colonne ${c + 1}`);
+  }
+
+  const cleanHeaders = headers.map((h, i) => h || `Colonne ${i + 1}`);
+  const rows: ImportedRow[] = [];
+
+  for (let r = headerRow + 1; r <= range.e.r; r++) {
+    const entry: ImportedRow = {};
+    let hasData = false;
+
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const h = cleanHeaders[c - range.s.c];
+      if (!h) continue;
+      let value = readExcelCell(sheet, r, c);
+      if (isPhoneColumnKey(h)) {
+        value = normalizeExcelPhone(value);
+      }
+      if (value) hasData = true;
+      entry[h] = value;
+    }
+
+    if (hasData) rows.push(entry);
+  }
+
+  return { headers: cleanHeaders, rows };
+}
+
 export interface ExcelParseResult {
   headers: string[];
   rows: ImportedRow[];
@@ -73,14 +132,12 @@ export async function parseExcelFile(
   countryDialCode?: string
 ): Promise<ExcelParseResult> {
   const buffer = await file.arrayBuffer();
-  const wb = XLSX.read(buffer, { type: "array" });
+  const wb = XLSX.read(buffer, { type: "array", cellText: true });
   const sheetName = wb.SheetNames[0];
   const sheet = wb.Sheets[sheetName];
-  const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
-    defval: "",
-  });
+  const { headers, rows: allRows } = extractSheetRows(sheet);
 
-  if (raw.length === 0) {
+  if (headers.length === 0 || allRows.length === 0) {
     return {
       headers: [],
       rows: [],
@@ -94,22 +151,9 @@ export async function parseExcelFile(
     };
   }
 
-  const headers = Object.keys(raw[0]).map((h) => h.trim()).filter(Boolean);
-  const rows: ImportedRow[] = raw
-    .map((row) => {
-      const entry: ImportedRow = {};
-      for (const h of headers) {
-        let value = String(row[h] ?? "").trim();
-        if (isPhoneColumnKey(h)) {
-          value = normalizeExcelPhone(value);
-        }
-        entry[h] = value;
-      }
-      return entry;
-    })
-    .filter((row) =>
-      headers.some((h) => String(row[h] ?? "").trim().length > 0)
-    );
+  const rows = allRows.filter((row) =>
+    headers.some((h) => String(row[h] ?? "").trim().length > 0)
+  );
 
   const { rows: prepared, skippedNoPhone, skippedDuplicate } = prepareImportRows(
     headers,
@@ -120,7 +164,7 @@ export async function parseExcelFile(
   return {
     headers,
     rows: prepared,
-    rawRows: rows,
+    rawRows: allRows,
     meta: {
       totalInFile: rows.length,
       imported: prepared.length,

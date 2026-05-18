@@ -23,7 +23,8 @@ export function normalizeExcelPhone(value: string): string {
 
 /**
  * Format international pour WhatsApp (sans +).
- * Utilise l’indicatif pays choisi dans les paramètres.
+ * Ne supprime jamais un 0 situé juste après l'indicatif pays :
+ * ex. 221 07…, 225 07… (le 0 fait partie du numéro national).
  */
 export function normalizePhoneForWhatsApp(
   phone: string,
@@ -37,19 +38,23 @@ export function normalizePhoneForWhatsApp(
     digits = digits.slice(2);
   }
 
-  if (digits.startsWith(dial) && digits.length >= dial.length + 8) {
+  // Déjà international : ne retirer aucun chiffre (y compris 0 après l'indicatif)
+  if (digits.startsWith(dial)) {
     return digits;
   }
 
+  // Numéro déjà long sans indicatif explicite (ex. 33612345678, 2210777123456)
   if (digits.length >= 11) {
     return digits;
   }
 
+  // Format national avec 0 initial : garder le 0 après l'indicatif
   if (digits.startsWith("0")) {
-    return `${dial}${digits.slice(1)}`;
+    return `${dial}${digits}`;
   }
 
-  if (digits.length >= 8 && digits.length <= 10 && !digits.startsWith(dial)) {
+  // Numéro national court sans 0 initial
+  if (digits.length >= 8 && digits.length <= 10) {
     return `${dial}${digits}`;
   }
 
@@ -62,4 +67,32 @@ export function isValidPhone(
 ): boolean {
   const digits = normalizePhoneForWhatsApp(phone, countryDialCode);
   return digits.length >= 10 && digits.length <= 15;
+}
+
+/** Choisit le numéro normalisé le plus complet parmi plusieurs sources. */
+export function pickBestNormalizedPhone(
+  candidates: string[],
+  countryDialCodes?: string[]
+): string {
+  const dials = Array.from(
+    new Set(
+      (countryDialCodes?.length
+        ? countryDialCodes
+        : [getDefaultCountryDialCode()]
+      )
+        .map((d) => d.replace(/\D/g, ""))
+        .filter(Boolean)
+    )
+  );
+
+  let best = "";
+  for (const raw of candidates) {
+    if (!String(raw ?? "").trim()) continue;
+    for (const dial of dials) {
+      const n = normalizePhoneForWhatsApp(raw, dial);
+      if (!isValidPhone(n, dial)) continue;
+      if (n.length > best.length) best = n;
+    }
+  }
+  return best;
 }

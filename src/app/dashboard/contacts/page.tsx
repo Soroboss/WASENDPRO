@@ -5,6 +5,7 @@ import {
   deleteContact,
   getCampaignContactGroups,
   getContactsSorted,
+  runPhoneRepairOnce,
 } from "@/lib/inforge";
 import { downloadExcelTemplate } from "@/lib/excel";
 import { getCustomFieldKeys } from "@/lib/contacts";
@@ -39,12 +40,18 @@ export default function ContactsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const repaired = await runPhoneRepairOnce();
       const [sorted, groups] = await Promise.all([
         getContactsSorted(),
         getCampaignContactGroups(),
       ]);
       setContacts(sorted);
       setCampaignGroups(groups);
+      if (repaired > 0) {
+        console.info(
+          `[BISWasend] ${repaired} numéro(s) corrigé(s) (zéro après indicatif restauré).`
+        );
+      }
     } finally {
       setLoading(false);
     }

@@ -2,11 +2,16 @@ import { createClient } from "@insforge/sdk";
 import {
   findNameFromRow,
   findPhoneFromRow,
+  isPhoneColumnKey,
   prepareImportRows,
   rowToSnapshot,
 } from "@/lib/contacts";
 import { DEFAULT_COUNTRY_DIAL } from "@/lib/countries";
-import { normalizePhoneForWhatsApp } from "@/lib/phone";
+import { getDefaultCountryDialCode } from "@/lib/country-settings";
+import {
+  normalizePhoneForWhatsApp,
+  pickBestNormalizedPhone,
+} from "@/lib/phone";
 import type {
   Campaign,
   CampaignAttachment,
@@ -138,6 +143,137 @@ export async function getCampaignContactGroups(): Promise<
   return groups;
 }
 
+const PHONE_REPAIR_FLAG = "biswasendpro_phone_repair_v2";
+
+/**
+ * Répare les numéros déjà en base en repartant des valeurs brutes (custom_data, row_data).
+ * Corrige les contacts dont le 0 après l'indicatif avait été supprimé par erreur.
+ */
+export async function repairContactsPhones(): Promise<{
+  updated: number;
+  examined: number;
+}> {
+  const contacts = await getContacts();
+  const campaigns = await getCampaigns();
+  const dialsByCampaign = new Map(
+    campaigns.map((c) => [c.id, c.country_dial ?? DEFAULT_COUNTRY_DIAL])
+  );
+
+  const logsByContact = new Map<
+    string,
+    { logId: string; rowData: Record<string, string>; dial: string }[]
+  >();
+
+  for (const campaign of campaigns) {
+    const dial = dialsByCampaign.get(campaign.id) ?? DEFAULT_COUNTRY_DIAL;
+    const logs = await getCampaignLogs(campaign.id);
+    for (const log of logs) {
+      const list = logsByContact.get(log.contact_id) ?? [];
+      list.push({
+        logId: log.id,
+        rowData: (log.row_data ?? {}) as Record<string, string>,
+        dial,
+      });
+      logsByContact.set(log.contact_id, list);
+    }
+  }
+
+  let updated = 0;
+  const client = getInsforgeClient();
+
+  for (const contact of contacts) {
+    const candidates: string[] = [contact.phone];
+    const dials: string[] = [getDefaultCountryDialCode()];
+
+    for (const [key, value] of Object.entries(contact.custom_data ?? {})) {
+      if (isPhoneColumnKey(key) && value) candidates.push(value);
+    }
+
+    for (const entry of logsByContact.get(contact.id) ?? []) {
+      dials.push(entry.dial);
+      for (const [key, value] of Object.entries(entry.rowData)) {
+        if (isPhoneColumnKey(key) && value) candidates.push(value);
+      }
+    }
+
+    const best = pickBestNormalizedPhone(candidates, dials);
+    if (!best || best === contact.phone) continue;
+
+    if (client) {
+      const { data: conflict } = await client.database
+        .from("contacts")
+        .select("id")
+        .eq("phone", best)
+        .neq("id", contact.id)
+        .maybeSingle();
+      if (conflict) continue;
+
+      const { error } = await client.database
+        .from("contacts")
+        .update({ phone: best })
+        .eq("id", contact.id);
+      if (error) continue;
+
+      for (const entry of logsByContact.get(contact.id) ?? []) {
+        const rowData = { ...entry.rowData };
+        let changed = false;
+        for (const key of Object.keys(rowData)) {
+          if (isPhoneColumnKey(key)) {
+            const fixed = normalizePhoneForWhatsApp(
+              rowData[key] || contact.phone,
+              entry.dial
+            );
+            if (fixed && fixed !== rowData[key]) {
+              rowData[key] = fixed;
+              changed = true;
+            }
+          }
+        }
+        if (changed) {
+          await client.database
+            .from("campaign_logs")
+            .update({ row_data: rowData })
+            .eq("id", entry.logId);
+        }
+      }
+    } else {
+      const store = readLocalStore();
+      const idx = store.contacts.findIndex((c) => c.id === contact.id);
+      if (idx === -1) continue;
+      const conflict = store.contacts.some(
+        (c) => c.phone === best && c.id !== contact.id
+      );
+      if (conflict) continue;
+      store.contacts[idx] = { ...store.contacts[idx], phone: best };
+      for (const log of store.campaign_logs) {
+        if (log.contact_id !== contact.id || !log.row_data) continue;
+        for (const key of Object.keys(log.row_data)) {
+          if (isPhoneColumnKey(key)) {
+            log.row_data[key] = normalizePhoneForWhatsApp(
+              log.row_data[key] || contact.phone,
+              getDefaultCountryDialCode()
+            );
+          }
+        }
+      }
+      writeLocalStore(store);
+    }
+
+    updated++;
+  }
+
+  return { updated, examined: contacts.length };
+}
+
+/** Exécuté une fois par navigateur après correction des zéros téléphone. */
+export async function runPhoneRepairOnce(): Promise<number> {
+  if (typeof window === "undefined") return 0;
+  if (sessionStorage.getItem(PHONE_REPAIR_FLAG)) return 0;
+  sessionStorage.setItem(PHONE_REPAIR_FLAG, "1");
+  const { updated } = await repairContactsPhones();
+  return updated;
+}
+
 export async function getContacts(): Promise<Contact[]> {
   const client = getInsforgeClient();
   if (client) {
@@ -220,7 +356,7 @@ export async function updateContact(
 ): Promise<Contact> {
   const phone =
     input.phone !== undefined
-      ? normalizePhoneForWhatsApp(input.phone)
+      ? normalizePhoneForWhatsApp(input.phone, getDefaultCountryDialCode())
       : undefined;
   if (phone !== undefined && !phone) {
     throw new Error("Le numéro de téléphone est requis.");
