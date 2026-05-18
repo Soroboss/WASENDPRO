@@ -48,6 +48,12 @@ export interface CampaignContactRow {
   rowData: Record<string, string>;
 }
 
+/** Contacts regroupés sous une campagne (annuaire par campagne). */
+export interface CampaignContactGroup {
+  campaign: Campaign;
+  entries: CampaignContactRow[];
+}
+
 export interface CreateCampaignInput {
   name: string;
   template_message: string;

@@ -10,6 +10,8 @@ import { normalizePhoneForWhatsApp } from "@/lib/phone";
 import type {
   Campaign,
   CampaignAttachment,
+  CampaignContactGroup,
+  CampaignContactRow,
   CampaignLog,
   CampaignLogStatus,
   Contact,
@@ -97,6 +99,44 @@ function writeLocalStore(store: LocalStore): void {
 }
 
 // ——— Contacts ———
+
+function sortContactsByPhone<T extends { contact: Contact }>(entries: T[]): T[] {
+  return [...entries].sort((a, b) =>
+    a.contact.phone.localeCompare(b.contact.phone, undefined, { numeric: true })
+  );
+}
+
+/** Tous les contacts triés par numéro (annuaire global). */
+export async function getContactsSorted(): Promise<Contact[]> {
+  const list = await getContacts();
+  return [...list].sort((a, b) =>
+    a.phone.localeCompare(b.phone, undefined, { numeric: true })
+  );
+}
+
+/** Contacts regroupés par campagne, numéros triés dans chaque groupe. */
+export async function getCampaignContactGroups(): Promise<
+  CampaignContactGroup[]
+> {
+  const campaigns = await getCampaigns();
+  const groups: CampaignContactGroup[] = [];
+
+  for (const campaign of campaigns) {
+    const logs = await getCampaignLogs(campaign.id);
+    const entries: CampaignContactRow[] = logs.map((log) => ({
+      contact: log.contact,
+      log,
+      rowData: log.row_data ?? log.contact.custom_data ?? {},
+    }));
+    if (entries.length === 0) continue;
+    groups.push({
+      campaign,
+      entries: sortContactsByPhone(entries),
+    });
+  }
+
+  return groups;
+}
 
 export async function getContacts(): Promise<Contact[]> {
   const client = getInsforgeClient();
