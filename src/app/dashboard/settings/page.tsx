@@ -13,8 +13,8 @@ const instructions = [
     icon: FileSpreadsheet,
     title: "Préparer vos contacts",
     steps: [
-      "Téléchargez le modèle Excel depuis le formulaire de nouvelle campagne.",
-      "Remplissez les colonnes : Nom, Téléphone, Entreprise (ou vos propres colonnes).",
+      "Téléchargez le modèle Excel (Nom, Prénom, Téléphone, Entreprise, Ville, Email, Offre…).",
+      "Ajoutez vos propres colonnes — chaque colonne devient une variable {Nom}, {Ville}, etc.",
       "Les numéros doivent être au format international sans le + (ex: 33612345678).",
     ],
   },

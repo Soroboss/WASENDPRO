@@ -41,3 +41,9 @@ export interface CreateCampaignInput {
   importedRows: ImportedRow[];
   columnHeaders: string[];
 }
+
+export interface UpdateContactInput {
+  name?: string | null;
+  phone?: string;
+  custom_data?: Record<string, string>;
+}

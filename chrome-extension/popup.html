@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>BISWasend Pro</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        width: 320px;
+        margin: 0;
+        padding: 16px;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #0a0f0a;
+        color: #e8f5e9;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 4px;
+        color: #4ade80;
+      }
+      p { font-size: 12px; color: #94a3b8; margin: 0 0 14px; line-height: 1.4; }
+      label.file-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 12px;
+        border: 1px dashed #4ade8066;
+        border-radius: 10px;
+        background: #4ade8014;
+        color: #4ade80;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      label.file-btn:hover { background: #4ade8028; }
+      input[type="file"] { display: none; }
+      #status {
+        margin-top: 12px;
+        font-size: 12px;
+        min-height: 18px;
+        color: #94a3b8;
+      }
+      #status.ok { color: #4ade80; }
+      #status.err { color: #f87171; }
+      .hint {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid #ffffff14;
+        font-size: 11px;
+        color: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BISWasend Pro</h1>
+    <p>Choisissez un fichier Excel (.xlsx, .xls, .csv) pour ouvrir le tableau de bord et préparer une campagne.</p>
+
+    <label class="file-btn" for="file">
+      📂 Charger un fichier Excel
+    </label>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" />
+
+    <div id="status"></div>
+    <p class="hint">Formats : mêmes colonnes que le modèle (Nom, Téléphone, variables…).</p>
+
+    <script src="xlsx.min.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

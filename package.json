@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "extension:prepare": "cp node_modules/xlsx/dist/xlsx.full.min.js chrome-extension/xlsx.min.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

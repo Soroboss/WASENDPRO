@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "BISWasend Pro — Import Excel",
+  "version": "1.0.0",
+  "description": "Charge un fichier Excel depuis Chrome et l'envoie au tableau de bord WASENDPRO.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "https://wasendpro.vercel.app/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*"
+  ],
+  "action": {
+    "default_title": "Importer Excel vers WASENDPRO",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icons/icon48.png"
+    }
+  },
+  "icons": {
+    "48": "icons/icon48.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://wasendpro.vercel.app/*",
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

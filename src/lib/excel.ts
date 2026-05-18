@@ -1,14 +1,48 @@
 import * as XLSX from "xlsx";
 import type { ImportedRow } from "@/types";
+import { TEMPLATE_HEADERS } from "@/lib/contacts";
 
-const TEMPLATE_HEADERS = ["Nom", "Téléphone", "Entreprise"];
+const EXAMPLE_ROWS: string[][] = [
+  [
+    "Jean Dupont",
+    "Jean",
+    "33612345678",
+    "Acme Corp",
+    "Paris",
+    "jean@acme.fr",
+    "-20%",
+    "15/06/2026",
+    "Client VIP",
+  ],
+  [
+    "Marie Martin",
+    "Marie",
+    "33698765432",
+    "Tech SA",
+    "Lyon",
+    "marie@tech.fr",
+    "Pack Pro",
+    "20/06/2026",
+    "Relance devis",
+  ],
+  [
+    "Paul Ndiaye",
+    "Paul",
+    "221771234567",
+    "BIS Group",
+    "Dakar",
+    "paul@bisgroup.sn",
+    "Essai gratuit",
+    "01/07/2026",
+    "Nouveau prospect",
+  ],
+];
 
-/** Télécharge un modèle Excel vierge. */
+/** Télécharge un modèle Excel avec plusieurs colonnes variables. */
 export function downloadExcelTemplate(filename = "modele_contacts.xlsx"): void {
   const ws = XLSX.utils.aoa_to_sheet([
-    TEMPLATE_HEADERS,
-    ["Jean Dupont", "33612345678", "Acme Corp"],
-    ["Marie Martin", "33698765432", "Tech SA"],
+    [...TEMPLATE_HEADERS],
+    ...EXAMPLE_ROWS,
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Contacts");

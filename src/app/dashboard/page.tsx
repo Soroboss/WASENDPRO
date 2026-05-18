@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ExtensionImportListener } from "@/components/dashboard/extension-import-listener";
+import type { ExtensionImportPayload } from "@/lib/extension-bridge";
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -27,6 +29,8 @@ export default function DashboardPage() {
   const [contactCount, setContactCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [extensionImport, setExtensionImport] =
+    useState<ExtensionImportPayload | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,6 +50,18 @@ export default function DashboardPage() {
     load();
   }, [load]);
 
+  const handleExtensionImport = useCallback(
+    (payload: ExtensionImportPayload) => {
+      setExtensionImport(payload);
+      setDialogOpen(true);
+    },
+    []
+  );
+
+  const handleExtensionImportConsumed = useCallback(() => {
+    setExtensionImport(null);
+  }, []);
+
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -56,6 +72,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <ExtensionImportListener onImport={handleExtensionImport} />
       <PageHeader
         title="Campagnes"
         description="Créez et gérez vos envois WhatsApp personnalisés"
@@ -161,6 +178,8 @@ export default function DashboardPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onCreated={load}
+        extensionImport={extensionImport}
+        onExtensionImportConsumed={handleExtensionImportConsumed}
       />
     </div>
   );

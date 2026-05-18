@@ -1,4 +1,8 @@
 import { createClient } from "@insforge/sdk";
+import {
+  findNameFromRow,
+  findPhoneFromRow,
+} from "@/lib/contacts";
 import type {
   Campaign,
   CampaignLog,
@@ -6,6 +10,7 @@ import type {
   Contact,
   CreateCampaignInput,
   ImportedRow,
+  UpdateContactInput,
 } from "@/types";
 
 const STORAGE_KEY = "biswasendpro_data";
@@ -61,26 +66,6 @@ function writeLocalStore(store: LocalStore): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
-function findPhoneColumn(headers: string[], row: ImportedRow): string {
-  const phoneKeys = ["téléphone", "telephone", "phone", "tel", "mobile", "numero", "numéro"];
-  for (const h of headers) {
-    if (phoneKeys.includes(h.toLowerCase().trim())) {
-      return row[h] ?? "";
-    }
-  }
-  return row[headers[1]] ?? row[headers[0]] ?? "";
-}
-
-function findNameColumn(headers: string[], row: ImportedRow): string {
-  const nameKeys = ["nom", "name", "prénom", "prenom"];
-  for (const h of headers) {
-    if (nameKeys.includes(h.toLowerCase().trim())) {
-      return row[h] ?? "";
-    }
-  }
-  return row[headers[0]] ?? "";
-}
-
 // ——— Contacts ———
 
 export async function getContacts(): Promise<Contact[]> {
@@ -100,10 +85,10 @@ export async function upsertContactFromRow(
   row: ImportedRow,
   headers: string[]
 ): Promise<Contact> {
-  const phone = findPhoneColumn(headers, row).replace(/\D/g, "");
+  const phone = findPhoneFromRow(headers, row);
   if (!phone) throw new Error("Numéro de téléphone manquant");
 
-  const name = findNameColumn(headers, row) || null;
+  const name = findNameFromRow(headers, row);
   const custom_data: Record<string, string> = {};
   for (const h of headers) {
     custom_data[h] = row[h] ?? "";
@@ -156,6 +141,64 @@ export async function upsertContactFromRow(
   }
   writeLocalStore(store);
   return contact;
+}
+
+export async function updateContact(
+  id: string,
+  input: UpdateContactInput
+): Promise<Contact> {
+  const phone = input.phone?.replace(/\D/g, "");
+  if (phone !== undefined && !phone) {
+    throw new Error("Le numéro de téléphone est requis.");
+  }
+
+  const client = getInsforgeClient();
+  if (client) {
+    const payload: Record<string, unknown> = {};
+    if (input.name !== undefined) payload.name = input.name;
+    if (phone !== undefined) payload.phone = phone;
+    if (input.custom_data !== undefined) payload.custom_data = input.custom_data;
+
+    const { data, error } = await client.database
+      .from("contacts")
+      .update(payload)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data as Contact;
+  }
+
+  const store = readLocalStore();
+  const idx = store.contacts.findIndex((c) => c.id === id);
+  if (idx === -1) throw new Error("Contact introuvable");
+
+  const updated: Contact = {
+    ...store.contacts[idx],
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(phone !== undefined ? { phone } : {}),
+    ...(input.custom_data !== undefined
+      ? { custom_data: input.custom_data }
+      : {}),
+  };
+  store.contacts[idx] = updated;
+  writeLocalStore(store);
+  return updated;
+}
+
+export async function deleteContact(id: string): Promise<void> {
+  const client = getInsforgeClient();
+  if (client) {
+    await client.database.from("campaign_logs").delete().eq("contact_id", id);
+    const { error } = await client.database.from("contacts").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const store = readLocalStore();
+  store.contacts = store.contacts.filter((c) => c.id !== id);
+  store.campaign_logs = store.campaign_logs.filter((l) => l.contact_id !== id);
+  writeLocalStore(store);
 }
 
 // ——— Campaigns ———

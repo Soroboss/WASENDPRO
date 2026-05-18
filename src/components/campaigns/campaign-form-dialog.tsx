@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MessageEditor } from "./message-editor";
+import { getMessageVariables } from "@/lib/contacts";
 import { downloadExcelTemplate, parseExcelFile } from "@/lib/excel";
 import { createCampaign } from "@/lib/inforge";
+import { compileMessage } from "@/lib/message";
+import type { ExtensionImportPayload } from "@/lib/extension-bridge";
 import type { ImportedRow } from "@/types";
 import {
   FileSpreadsheet,
@@ -21,6 +24,7 @@ import {
   Loader2,
   Users,
   Sparkles,
+  Braces,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -29,12 +33,17 @@ interface CampaignFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+  /** Données pré-remplies par l’extension Chrome */
+  extensionImport?: ExtensionImportPayload | null;
+  onExtensionImportConsumed?: () => void;
 }
 
 export function CampaignFormDialog({
   open,
   onOpenChange,
   onCreated,
+  extensionImport,
+  onExtensionImportConsumed,
 }: CampaignFormDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
@@ -53,6 +62,18 @@ export function CampaignFormDialog({
     setRows([]);
     setError(null);
   };
+
+  useEffect(() => {
+    if (!open || !extensionImport) return;
+    setHeaders(extensionImport.headers);
+    setRows(extensionImport.rows);
+    setError(null);
+    if (extensionImport.fileName) {
+      const base = extensionImport.fileName.replace(/\.[^.]+$/, "");
+      setName((prev) => prev.trim() || `Campagne ${base}`);
+    }
+    onExtensionImportConsumed?.();
+  }, [open, extensionImport, onExtensionImportConsumed]);
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -186,12 +207,40 @@ export function CampaignFormDialog({
                 onChange={handleImport}
               />
               {rows.length > 0 && (
-                <Badge className="gap-1.5 bg-accent text-accent-foreground border-0">
+                <Badge className="gap-1.5 bg-neon/10 text-neon border border-neon/25">
                   <Users className="h-3.5 w-3.5" />
                   {rows.length} contact{rows.length > 1 ? "s" : ""}
                 </Badge>
               )}
             </div>
+
+            {headers.length > 0 && (
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3 space-y-2">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Braces className="h-3 w-3 shrink-0" />
+                  Colonnes disponibles comme variables dans le message :
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {getMessageVariables(headers).map((v) => (
+                    <Badge
+                      key={v}
+                      variant="outline"
+                      className="font-mono text-[10px] rounded-md border-neon/20"
+                    >
+                      {`{${v}}`}
+                    </Badge>
+                  ))}
+                </div>
+                {rows[0] && message.trim() && (
+                  <p className="text-xs text-muted-foreground border-t border-white/10 pt-2">
+                    <span className="section-label block mb-1">Aperçu (1er contact)</span>
+                    <span className="font-mono line-clamp-3 block">
+                      {compileMessage(message, rows[0])}
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <MessageEditor
