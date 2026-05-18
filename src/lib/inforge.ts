@@ -310,6 +310,83 @@ export async function getCampaign(id: string): Promise<Campaign | null> {
 
 const LOGS_PAGE_SIZE = 1000;
 
+function isMissingColumnError(message: string, column: string): boolean {
+  const m = message.toLowerCase();
+  const col = column.toLowerCase();
+  return (
+    m.includes(col) &&
+    (m.includes("schema cache") ||
+      m.includes("could not find") ||
+      m.includes("column") ||
+      m.includes("does not exist"))
+  );
+}
+
+async function insertCampaignRecord(
+  client: NonNullable<ReturnType<typeof getInsforgeClient>>,
+  input: CreateCampaignInput,
+  dial: string
+): Promise<Record<string, unknown>> {
+  type Payload = Record<string, unknown>;
+  const base: Payload = {
+    name: input.name,
+    template_message: input.template_message,
+    scheduled_date: input.scheduled_date ?? null,
+  };
+
+  const attempts: Payload[] = [
+    {
+      ...base,
+      attachments: input.attachments ?? [],
+      country_dial: dial,
+    },
+    { ...base, attachments: input.attachments ?? [] },
+    { ...base, country_dial: dial },
+    base,
+  ];
+
+  let lastError: string | null = null;
+
+  for (const payload of attempts) {
+    const { data, error } = await client.database
+      .from("campaigns")
+      .insert([payload])
+      .select()
+      .single();
+
+    if (!error && data) {
+      const row = data as Record<string, unknown>;
+      return {
+        ...row,
+        attachments: row.attachments ?? input.attachments ?? [],
+        country_dial: row.country_dial ?? dial,
+      };
+    }
+
+    if (error) {
+      lastError = error.message;
+      const msg = error.message;
+      if (
+        payload.attachments !== undefined &&
+        isMissingColumnError(msg, "attachments")
+      ) {
+        continue;
+      }
+      if (
+        payload.country_dial !== undefined &&
+        isMissingColumnError(msg, "country_dial")
+      ) {
+        continue;
+      }
+    }
+  }
+
+  throw new Error(
+    lastError ??
+      "Impossible de créer la campagne. Exécutez la migration SQL sur InsForge (voir supabase/migrations/20260518_insforge_schema_sync.sql)."
+  );
+}
+
 async function insertCampaignLogsBatch(
   client: NonNullable<ReturnType<typeof getInsforgeClient>>,
   logs: {
@@ -374,20 +451,7 @@ export async function createCampaign(
   const client = getInsforgeClient();
 
   if (client) {
-    const { data: campaign, error } = await client.database
-      .from("campaigns")
-      .insert([
-        {
-          name: input.name,
-          template_message: input.template_message,
-          scheduled_date: input.scheduled_date ?? null,
-          attachments: input.attachments ?? [],
-          country_dial: dial,
-        },
-      ])
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
+    const campaign = await insertCampaignRecord(client, input, dial);
 
     const logsToInsert: {
       campaign_id: string;
@@ -399,7 +463,7 @@ export async function createCampaign(
     for (const row of rows) {
       const contact = await upsertContactFromRow(row, input.columnHeaders, dial);
       logsToInsert.push({
-        campaign_id: campaign.id,
+        campaign_id: String(campaign.id),
         contact_id: contact.id,
         status: "pending",
         row_data: rowToSnapshot(input.columnHeaders, row, dial),
@@ -407,7 +471,11 @@ export async function createCampaign(
     }
 
     await insertCampaignLogsBatch(client, logsToInsert);
-    return normalizeCampaign(campaign as Record<string, unknown>);
+    return normalizeCampaign({
+      ...campaign,
+      attachments: input.attachments ?? [],
+      country_dial: dial,
+    });
   }
 
   const store = readLocalStore();
