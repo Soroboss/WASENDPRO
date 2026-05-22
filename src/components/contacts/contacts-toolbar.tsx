@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { COUNTRIES } from "@/lib/countries";
 import type { ContactSort, HasNameFilter } from "@/lib/contact-filters";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -83,15 +82,15 @@ export function ContactsToolbar({
     search.trim() !== "" || dialCode !== "" || hasName !== "all";
 
   return (
-    <motion.div
+    <div
       className={cn(
         "glass-panel rounded-xl border border-white/5 overflow-hidden",
         className
       )}
     >
       <div className="flex flex-col gap-3 p-4">
-        <motion.div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <motion.div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Rechercher nom, téléphone, entreprise…"
@@ -109,9 +108,9 @@ export function ContactsToolbar({
                 <X className="h-4 w-4" />
               </button>
             )}
-          </motion.div>
+          </div>
 
-          <motion.div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               value={dialCode || "all"}
               onValueChange={(v) =>
@@ -180,11 +179,11 @@ export function ContactsToolbar({
                 Réinitialiser
               </Button>
             )}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
-        <motion.div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/40">
-          <motion.div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/40">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <Badge variant="outline" className="rounded-md font-normal tabular-nums">
               {filteredCount} sur {totalCount} contact
               {totalCount !== 1 ? "s" : ""}
@@ -198,10 +197,10 @@ export function ContactsToolbar({
               <CheckSquare className="h-3.5 w-3.5" />
               {allVisibleSelected ? "Tout désélectionner" : "Tout sélectionner"}
             </Button>
-          </motion.div>
+          </div>
 
           {selectedCount > 0 && (
-            <motion.div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge className="rounded-md bg-neon/15 text-neon border-neon/30">
                 {selectedCount} sélectionné{selectedCount > 1 ? "s" : ""}
               </Badge>
@@ -244,11 +243,11 @@ export function ContactsToolbar({
               >
                 <X className="h-4 w-4" />
               </Button>
-            </motion.div>
+            </div>
           )}
-        </motion.div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 

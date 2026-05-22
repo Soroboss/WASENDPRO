@@ -113,8 +113,8 @@ export function CampaignSourcePanel({
   }, [mode]);
 
   useEffect(() => {
-    if (mode === "annuaire") void loadAnnuaire();
-  }, [mode, loadAnnuaire]);
+    if (mode === "annuaire" && rows.length === 0) void loadAnnuaire();
+  }, [mode, loadAnnuaire, rows.length]);
 
   useEffect(() => {
     if (mode === "relance" && sourceCampaignId) void loadRelance();

@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  getCampaigns,
-  getContacts,
-  isUsingLocalStorage,
-} from "@/lib/inforge";
+import { getCampaigns, isUsingLocalStorage } from "@/lib/inforge";
 import { AlertTriangle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +18,7 @@ export function ConnectionStatus() {
         return;
       }
       try {
-        await Promise.all([getCampaigns(), getContacts()]);
+        await getCampaigns();
         setStatus("connected");
       } catch {
         setStatus("error");
@@ -32,7 +27,6 @@ export function ConnectionStatus() {
     check();
   }, [isDemo]);
 
-  // En production : rien si tout va bien — pas de bandeau technique pour l'utilisateur.
   if (status === "loading" || status === "connected") {
     return null;
   }
@@ -58,16 +52,17 @@ export function ConnectionStatus() {
   const Icon = cfg.icon;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn("flex items-start gap-3 rounded-xl px-4 py-3.5 text-sm", cfg.pill)}
+    <div
+      className={cn(
+        "flex items-start gap-3 rounded-xl px-4 py-3.5 text-sm animate-in fade-in slide-in-from-bottom-2 duration-300",
+        cfg.pill
+      )}
     >
       <Icon className="h-5 w-5 shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
         <p className="font-medium">{cfg.title}</p>
         <p className="mt-0.5 opacity-80 text-xs leading-relaxed">{cfg.text}</p>
       </div>
-    </motion.div>
+    </div>
   );
 }

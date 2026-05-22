@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import type { CampaignContactGroup } from "@/types";
 import type { CampaignStatusFilter } from "@/lib/contact-filters";
 import { Button } from "@/components/ui/button";
@@ -43,14 +42,14 @@ export function ContactsCampaignToolbar({
     search.trim() !== "" || campaignId !== "" || status !== "all";
 
   return (
-    <motion.div
+    <div
       className={cn(
         "glass-panel rounded-xl border border-white/5 p-4 space-y-3",
         className
       )}
     >
-      <motion.div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <motion.div className="relative flex-1 min-w-[200px]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Filtrer par nom ou numéro…"
@@ -67,9 +66,9 @@ export function ContactsCampaignToolbar({
               <X className="h-4 w-4" />
             </button>
           )}
-        </motion.div>
+        </div>
 
-        <motion.div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
           <Select
             value={campaignId || "all"}
             onValueChange={(v) =>
@@ -128,14 +127,14 @@ export function ContactsCampaignToolbar({
               Réinitialiser
             </Button>
           )}
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       <Badge variant="outline" className="rounded-md font-normal tabular-nums">
         {visibleCount === 1
           ? "1 ligne visible"
           : `${visibleCount} lignes visibles`}
       </Badge>
-    </motion.div>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -56,7 +56,7 @@ interface CampaignRunnerProps {
   campaignId: string;
 }
 
-function ContactRow({
+const ContactRow = memo(function ContactRow({
   log,
   compiled,
   isSending,
@@ -113,7 +113,7 @@ function ContactRow({
       </TableCell>
     </TableRow>
   );
-}
+});
 
 export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -166,6 +166,19 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
     () => paginateItems(activeLogs, page, pageSize),
     [activeLogs, page, pageSize]
   );
+
+  const compiledByLogId = useMemo(() => {
+    if (!campaign) return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const log of paginatedLogs) {
+      const rowData =
+        log.row_data && Object.keys(log.row_data).length > 0
+          ? log.row_data
+          : log.contact.custom_data ?? {};
+      map.set(log.id, compileMessage(campaign.template_message, rowData));
+    }
+    return map;
+  }, [campaign, paginatedLogs]);
 
   const countryDial = campaign?.country_dial ?? "33";
   const countryLabel = getCountryByDial(countryDial);
@@ -467,10 +480,7 @@ export function CampaignRunner({ campaignId }: CampaignRunnerProps) {
                         <ContactRow
                           key={log.id}
                           log={log}
-                          compiled={compileMessage(
-                            campaign.template_message,
-                            getRowData(log)
-                          )}
+                          compiled={compiledByLogId.get(log.id) ?? ""}
                           isSending={sendingId === log.contact_id}
                           onSend={handleSend}
                         />

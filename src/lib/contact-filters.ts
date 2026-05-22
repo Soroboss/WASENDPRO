@@ -12,15 +12,27 @@ export interface ContactFilterState {
   hasName: HasNameFilter;
 }
 
+const COUNTRIES_BY_DIAL_LENGTH = [...COUNTRIES].sort(
+  (a, b) => b.dialCode.length - a.dialCode.length
+);
+
+const dialByPhoneCache = new Map<string, string | null>();
+
 export function detectDialFromPhone(phone: string): string | null {
+  const cached = dialByPhoneCache.get(phone);
+  if (cached !== undefined) return cached;
+
   const digits = phone.replace(/\D/g, "");
-  const sorted = [...COUNTRIES].sort(
-    (a, b) => b.dialCode.length - a.dialCode.length
-  );
-  for (const c of sorted) {
-    if (digits.startsWith(c.dialCode)) return c.dialCode;
+  let dial: string | null = null;
+  for (const c of COUNTRIES_BY_DIAL_LENGTH) {
+    if (digits.startsWith(c.dialCode)) {
+      dial = c.dialCode;
+      break;
+    }
   }
-  return null;
+  if (dialByPhoneCache.size > 5000) dialByPhoneCache.clear();
+  dialByPhoneCache.set(phone, dial);
+  return dial;
 }
 
 export function filterAndSortContacts(

@@ -8,8 +8,10 @@ import {
 } from "@/lib/contacts";
 import {
   clearAppSessionCache,
+  getCachedCampaignLogs,
   getCachedCampaigns,
   getCachedContacts,
+  invalidateCampaignLogsCache,
   invalidateDataCache,
 } from "@/lib/app-cache";
 import { DEFAULT_COUNTRY_DIAL } from "@/lib/countries";
@@ -58,6 +60,9 @@ function normalizeCampaign(row: Record<string, unknown>): Campaign {
 
 const STORAGE_KEY = "biswasendpro_data";
 const LEGACY_STORAGE_KEY = "wasendpro_data";
+const LOGS_PAGE_SIZE = 1000;
+const CONTACT_PHONE_CHUNK = 80;
+const UPSERT_CONCURRENCY = 20;
 
 interface LocalStore {
   contacts: Contact[];
@@ -84,10 +89,13 @@ export function getInsforgeClient() {
   });
 }
 
+let localStoreCache: LocalStore | null = null;
+
 function readLocalStore(): LocalStore {
   if (typeof window === "undefined") {
     return { contacts: [], campaigns: [], campaign_logs: [] };
   }
+  if (localStoreCache) return localStoreCache;
   try {
     let raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
@@ -97,15 +105,21 @@ function readLocalStore(): LocalStore {
         localStorage.removeItem(LEGACY_STORAGE_KEY);
       }
     }
-    if (!raw) return { contacts: [], campaigns: [], campaign_logs: [] };
-    return JSON.parse(raw) as LocalStore;
+    if (!raw) {
+      localStoreCache = { contacts: [], campaigns: [], campaign_logs: [] };
+      return localStoreCache;
+    }
+    localStoreCache = JSON.parse(raw) as LocalStore;
+    return localStoreCache;
   } catch {
-    return { contacts: [], campaigns: [], campaign_logs: [] };
+    localStoreCache = { contacts: [], campaigns: [], campaign_logs: [] };
+    return localStoreCache;
   }
 }
 
 function writeLocalStore(store: LocalStore): void {
   if (typeof window === "undefined") return;
+  localStoreCache = store;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
@@ -125,15 +139,85 @@ export async function getContactsSorted(): Promise<Contact[]> {
   );
 }
 
+function mapLogRow(
+  row: Record<string, unknown>
+): CampaignLog & { contact: Contact } {
+  const log = row as unknown as CampaignLog & { contact: Contact };
+  return {
+    ...log,
+    row_data:
+      (log.row_data as Record<string, string> | undefined) ??
+      log.contact?.custom_data ??
+      {},
+    contact: (row as { contact: Contact }).contact,
+  };
+}
+
+/** Tous les logs (toutes campagnes) avec contact joint — une passe paginée. */
+async function fetchAllCampaignLogsWithContacts(): Promise<
+  (CampaignLog & { contact: Contact })[]
+> {
+  const client = getInsforgeClient();
+  if (client) {
+    const all: (CampaignLog & { contact: Contact })[] = [];
+    let from = 0;
+
+    while (true) {
+      const to = from + LOGS_PAGE_SIZE - 1;
+      const { data, error } = await client.database
+        .from("campaign_logs")
+        .select("*, contact:contacts(*)")
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw new Error(error.message);
+
+      const page = (data ?? []).map((row: Record<string, unknown>) =>
+        mapLogRow(row)
+      );
+      all.push(...page);
+      if (page.length < LOGS_PAGE_SIZE) break;
+      from += LOGS_PAGE_SIZE;
+    }
+    return all;
+  }
+
+  const store = readLocalStore();
+  const contactById = new Map(store.contacts.map((c) => [c.id, c]));
+  return store.campaign_logs
+    .map((log) => {
+      const contact = contactById.get(log.contact_id);
+      if (!contact) return null;
+      return {
+        ...log,
+        row_data: log.row_data ?? contact.custom_data ?? {},
+        contact,
+      };
+    })
+    .filter(Boolean) as (CampaignLog & { contact: Contact })[];
+}
+
 /** Contacts regroupés par campagne, numéros triés dans chaque groupe. */
 export async function getCampaignContactGroups(): Promise<
   CampaignContactGroup[]
 > {
-  const campaigns = await getCampaigns();
-  const groups: CampaignContactGroup[] = [];
+  const [campaigns, allLogs] = await Promise.all([
+    getCampaigns(),
+    fetchAllCampaignLogsWithContacts(),
+  ]);
 
+  const logsByCampaign = new Map<
+    string,
+    (CampaignLog & { contact: Contact })[]
+  >();
+  for (const log of allLogs) {
+    const list = logsByCampaign.get(log.campaign_id) ?? [];
+    list.push(log);
+    logsByCampaign.set(log.campaign_id, list);
+  }
+
+  const groups: CampaignContactGroup[] = [];
   for (const campaign of campaigns) {
-    const logs = await getCampaignLogs(campaign.id);
+    const logs = logsByCampaign.get(campaign.id) ?? [];
     const entries: CampaignContactRow[] = logs.map((log) => ({
       contact: log.contact,
       log,
@@ -170,18 +254,17 @@ export async function repairContactsPhones(): Promise<{
     { logId: string; rowData: Record<string, string>; dial: string }[]
   >();
 
-  for (const campaign of campaigns) {
-    const dial = dialsByCampaign.get(campaign.id) ?? DEFAULT_COUNTRY_DIAL;
-    const logs = await getCampaignLogs(campaign.id);
-    for (const log of logs) {
-      const list = logsByContact.get(log.contact_id) ?? [];
-      list.push({
-        logId: log.id,
-        rowData: (log.row_data ?? {}) as Record<string, string>,
-        dial,
-      });
-      logsByContact.set(log.contact_id, list);
-    }
+  const allLogs = await fetchAllCampaignLogsWithContacts();
+  for (const log of allLogs) {
+    const dial =
+      dialsByCampaign.get(log.campaign_id) ?? DEFAULT_COUNTRY_DIAL;
+    const list = logsByContact.get(log.contact_id) ?? [];
+    list.push({
+      logId: log.id,
+      rowData: (log.row_data ?? {}) as Record<string, string>,
+      dial,
+    });
+    logsByContact.set(log.contact_id, list);
   }
 
   let updated = 0;
@@ -388,6 +471,7 @@ export async function updateContact(
       .select()
       .single();
     if (error) throw new Error(error.message);
+    invalidateDataCache();
     return data as Contact;
   }
 
@@ -405,22 +489,35 @@ export async function updateContact(
   };
   store.contacts[idx] = updated;
   writeLocalStore(store);
+  invalidateDataCache();
   return updated;
 }
 
 export async function deleteContact(id: string): Promise<void> {
+  await deleteContacts([id]);
+}
+
+export async function deleteContacts(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
   const client = getInsforgeClient();
   if (client) {
-    await client.database.from("campaign_logs").delete().eq("contact_id", id);
-    const { error } = await client.database.from("contacts").delete().eq("id", id);
-    if (error) throw new Error(error.message);
+    const chunkSize = 100;
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize);
+      await client.database.from("campaign_logs").delete().in("contact_id", chunk);
+      const { error } = await client.database.from("contacts").delete().in("id", chunk);
+      if (error) throw new Error(error.message);
+    }
+    invalidateDataCache();
     return;
   }
 
   const store = readLocalStore();
-  store.contacts = store.contacts.filter((c) => c.id !== id);
-  store.campaign_logs = store.campaign_logs.filter((l) => l.contact_id !== id);
+  const idSet = new Set(ids);
+  store.contacts = store.contacts.filter((c) => !idSet.has(c.id));
+  store.campaign_logs = store.campaign_logs.filter((l) => !idSet.has(l.contact_id));
   writeLocalStore(store);
+  invalidateDataCache();
 }
 
 // ——— Campaigns ———
@@ -459,8 +556,6 @@ export async function getCampaign(id: string): Promise<Campaign | null> {
   }
   return readLocalStore().campaigns.find((c) => c.id === id) ?? null;
 }
-
-const LOGS_PAGE_SIZE = 1000;
 
 function isMissingColumnError(message: string, column: string): boolean {
   const m = message.toLowerCase();
@@ -539,6 +634,126 @@ async function insertCampaignRecord(
   );
 }
 
+type ContactRowPayload = {
+  phone: string;
+  name: string | null;
+  custom_data: Record<string, string>;
+};
+
+function buildContactPayloads(
+  rows: ImportedRow[],
+  headers: string[],
+  dial: string
+): ContactRowPayload[] {
+  const seen = new Set<string>();
+  const out: ContactRowPayload[] = [];
+  for (const row of rows) {
+    const phone = findPhoneFromRow(headers, row, dial);
+    if (!phone || seen.has(phone)) continue;
+    seen.add(phone);
+    const custom_data: Record<string, string> = {};
+    for (const h of headers) custom_data[h] = row[h] ?? "";
+    out.push({
+      phone,
+      name: findNameFromRow(headers, row),
+      custom_data,
+    });
+  }
+  return out;
+}
+
+async function batchUpsertContactsFromRows(
+  rows: ImportedRow[],
+  headers: string[],
+  dial: string
+): Promise<Map<string, Contact>> {
+  const payloads = buildContactPayloads(rows, headers, dial);
+  const phoneToContact = new Map<string, Contact>();
+
+  const client = getInsforgeClient();
+  if (!client) {
+    const store = readLocalStore();
+    for (const p of payloads) {
+      let contact = store.contacts.find((c) => c.phone === p.phone);
+      if (contact) {
+        contact = { ...contact, name: p.name, custom_data: p.custom_data };
+        store.contacts = store.contacts.map((c) =>
+          c.phone === p.phone ? contact! : c
+        );
+      } else {
+        contact = {
+          id: generateId(),
+          phone: p.phone,
+          name: p.name,
+          custom_data: p.custom_data,
+          created_at: new Date().toISOString(),
+        };
+        store.contacts.push(contact);
+      }
+      phoneToContact.set(p.phone, contact);
+    }
+    writeLocalStore(store);
+    return phoneToContact;
+  }
+
+  for (let i = 0; i < payloads.length; i += CONTACT_PHONE_CHUNK) {
+    const chunk = payloads.slice(i, i + CONTACT_PHONE_CHUNK);
+    const phones = chunk.map((p) => p.phone);
+    const { data: existingRows, error: fetchErr } = await client.database
+      .from("contacts")
+      .select("*")
+      .in("phone", phones);
+    if (fetchErr) throw new Error(fetchErr.message);
+
+    const existingByPhone = new Map(
+      ((existingRows ?? []) as Contact[]).map((c) => [c.phone, c])
+    );
+    const toInsert: ContactRowPayload[] = [];
+    const toUpdate: { id: string; payload: ContactRowPayload }[] = [];
+
+    for (const p of chunk) {
+      const ex = existingByPhone.get(p.phone);
+      if (ex) toUpdate.push({ id: ex.id, payload: p });
+      else toInsert.push(p);
+    }
+
+    if (toInsert.length > 0) {
+      const { data: inserted, error: insErr } = await client.database
+        .from("contacts")
+        .insert(
+          toInsert.map((p) => ({
+            phone: p.phone,
+            name: p.name,
+            custom_data: p.custom_data,
+          }))
+        )
+        .select();
+      if (insErr) throw new Error(insErr.message);
+      for (const c of (inserted ?? []) as Contact[]) {
+        phoneToContact.set(c.phone, c);
+      }
+    }
+
+    for (let u = 0; u < toUpdate.length; u += UPSERT_CONCURRENCY) {
+      const slice = toUpdate.slice(u, u + UPSERT_CONCURRENCY);
+      await Promise.all(
+        slice.map(async ({ id, payload }) => {
+          const { data, error } = await client.database
+            .from("contacts")
+            .update({ name: payload.name, custom_data: payload.custom_data })
+            .eq("id", id)
+            .select()
+            .single();
+          if (error) throw new Error(error.message);
+          phoneToContact.set(payload.phone, data as Contact);
+        })
+      );
+    }
+  }
+
+  return phoneToContact;
+}
+
 async function insertCampaignLogsBatch(
   client: NonNullable<ReturnType<typeof getInsforgeClient>>,
   logs: {
@@ -605,6 +820,12 @@ export async function createCampaign(
   if (client) {
     const campaign = await insertCampaignRecord(client, input, dial);
 
+    const phoneToContact = await batchUpsertContactsFromRows(
+      rows,
+      input.columnHeaders,
+      dial
+    );
+
     const logsToInsert: {
       campaign_id: string;
       contact_id: string;
@@ -613,7 +834,10 @@ export async function createCampaign(
     }[] = [];
 
     for (const row of rows) {
-      const contact = await upsertContactFromRow(row, input.columnHeaders, dial);
+      const phone = findPhoneFromRow(input.columnHeaders, row, dial);
+      if (!phone) continue;
+      const contact = phoneToContact.get(phone);
+      if (!contact) continue;
       logsToInsert.push({
         campaign_id: String(campaign.id),
         contact_id: contact.id,
@@ -624,6 +848,7 @@ export async function createCampaign(
 
     await insertCampaignLogsBatch(client, logsToInsert);
     invalidateDataCache();
+    invalidateCampaignLogsCache(String(campaign.id));
     return normalizeCampaign({
       ...campaign,
       attachments: input.attachments ?? [],
@@ -631,7 +856,7 @@ export async function createCampaign(
     });
   }
 
-  const store = readLocalStore();
+  let store = readLocalStore();
   const campaign: Campaign = {
     id: generateId(),
     name: input.name,
@@ -642,9 +867,20 @@ export async function createCampaign(
     created_at: new Date().toISOString(),
   };
   store.campaigns.push(campaign);
+  writeLocalStore(store);
 
+  const phoneToContact = await batchUpsertContactsFromRows(
+    rows,
+    input.columnHeaders,
+    dial
+  );
+
+  store = readLocalStore();
   for (const row of rows) {
-    const contact = await upsertContactFromRow(row, input.columnHeaders, dial);
+    const phone = findPhoneFromRow(input.columnHeaders, row, dial);
+    if (!phone) continue;
+    const contact = phoneToContact.get(phone);
+    if (!contact) continue;
     store.campaign_logs.push({
       id: generateId(),
       campaign_id: campaign.id,
@@ -677,7 +913,7 @@ export async function deleteCampaign(id: string): Promise<void> {
 
 // ——— Campaign logs ———
 
-export async function getCampaignLogs(
+async function fetchCampaignLogsFromStore(
   campaignId: string
 ): Promise<(CampaignLog & { contact: Contact })[]> {
   const client = getInsforgeClient();
@@ -695,18 +931,9 @@ export async function getCampaignLogs(
         .range(from, to);
       if (error) throw new Error(error.message);
 
-      const page = (data ?? []).map((row: Record<string, unknown>) => {
-        const log = row as unknown as CampaignLog & { contact: Contact };
-        return {
-          ...log,
-          row_data:
-            (log.row_data as Record<string, string> | undefined) ??
-            log.contact?.custom_data ??
-            {},
-          contact: (row as { contact: Contact }).contact,
-        };
-      });
-
+      const page = (data ?? []).map((row: Record<string, unknown>) =>
+        mapLogRow(row)
+      );
       all.push(...page);
       if (page.length < LOGS_PAGE_SIZE) break;
       from += LOGS_PAGE_SIZE;
@@ -716,16 +943,25 @@ export async function getCampaignLogs(
   }
 
   const store = readLocalStore();
+  const contactById = new Map(store.contacts.map((c) => [c.id, c]));
   return store.campaign_logs
     .filter((l) => l.campaign_id === campaignId)
     .map((log) => {
-      const contact = store.contacts.find((c) => c.id === log.contact_id)!;
+      const contact = contactById.get(log.contact_id)!;
       return {
         ...log,
         row_data: log.row_data ?? contact.custom_data ?? {},
         contact,
       };
     });
+}
+
+export async function getCampaignLogs(
+  campaignId: string
+): Promise<(CampaignLog & { contact: Contact })[]> {
+  return getCachedCampaignLogs(campaignId, () =>
+    fetchCampaignLogsFromStore(campaignId)
+  );
 }
 
 export async function markContactAsSent(
@@ -744,7 +980,7 @@ export async function markContactAsSent(
       .select()
       .single();
     if (error) throw new Error(error.message);
-    invalidateDataCache();
+    invalidateCampaignLogsCache(campaignId);
     return data as CampaignLog;
   }
 
@@ -759,7 +995,7 @@ export async function markContactAsSent(
     sent_at: now,
   };
   writeLocalStore(store);
-  invalidateDataCache();
+  invalidateCampaignLogsCache(campaignId);
   return store.campaign_logs[idx];
 }
 

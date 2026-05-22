@@ -59,6 +59,28 @@
     background-size: 48px 48px;
   }
 
+  .cyber-orb-pulse {
+    animation: cyber-orb-pulse 10s ease-in-out infinite;
+  }
+
+  @keyframes cyber-orb-pulse {
+    0%,
+    100% {
+      transform: translateX(-50%) scale(1);
+      opacity: 0.28;
+    }
+    50% {
+      transform: translateX(-50%) scale(1.05);
+      opacity: 0.38;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cyber-orb-pulse {
+      animation: none;
+    }
+  }
+
   .glass-panel {
     @apply border border-white/[0.08] bg-card/60 backdrop-blur-xl shadow-glass;
   }

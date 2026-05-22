@@ -1,13 +1,17 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   deleteContact,
+  deleteContacts,
   getCampaignContactGroups,
   getContactsSorted,
   runPhoneRepairOnce,
 } from "@/lib/inforge";
+import {
+  CampaignContactsPagination,
+  paginateItems,
+} from "@/components/campaigns/campaign-contacts-pagination";
 import { downloadExcelTemplate, exportContactsToExcel } from "@/lib/excel";
 import {
   deduplicateContactsByPhone,
@@ -81,22 +85,18 @@ export default function ContactsPage() {
   const [campaignIdFilter, setCampaignIdFilter] = useState("");
   const [campaignStatus, setCampaignStatus] =
     useState<CampaignStatusFilter>("all");
+  const [dirPage, setDirPage] = useState(1);
+  const [dirPageSize, setDirPageSize] = useState(50);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const repaired = await runPhoneRepairOnce();
       const [sorted, groups] = await Promise.all([
         getContactsSorted(),
         getCampaignContactGroups(),
       ]);
       setContacts(deduplicateContactsByPhone(sorted));
       setCampaignGroups(groups);
-      if (repaired > 0) {
-        console.info(
-          `[BISWasend] ${repaired} numéro(s) corrigé(s) (zéro après indicatif restauré).`
-        );
-      }
     } finally {
       setLoading(false);
     }
@@ -104,6 +104,20 @@ export default function ContactsPage() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    const scheduleRepair = () => {
+      void runPhoneRepairOnce().then((repaired) => {
+        if (repaired > 0) void load();
+      });
+    };
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(scheduleRepair, { timeout: 8000 });
+      return () => cancelIdleCallback(id);
+    }
+    const t = window.setTimeout(scheduleRepair, 3000);
+    return () => window.clearTimeout(t);
   }, [load]);
 
   useEffect(() => {
@@ -119,6 +133,15 @@ export default function ContactsPage() {
   const filteredContacts = useMemo(
     () => filterAndSortContacts(contacts, filters),
     [contacts, filters]
+  );
+
+  useEffect(() => {
+    setDirPage(1);
+  }, [filters, dirPageSize]);
+
+  const paginatedDirectoryContacts = useMemo(
+    () => paginateItems(filteredContacts, dirPage, dirPageSize),
+    [filteredContacts, dirPage, dirPageSize]
   );
 
   const filteredCampaignGroups = useMemo(
@@ -207,9 +230,7 @@ export default function ContactsPage() {
     }
     setBulkBusy(true);
     try {
-      for (const c of selectedContacts) {
-        await deleteContact(c.id);
-      }
+      await deleteContacts(selectedContacts.map((c) => c.id));
       setSelectedIds(new Set());
       await load();
     } catch (err) {
@@ -271,7 +292,7 @@ export default function ContactsPage() {
         description="Gérez vos contacts, filtrez et lancez des actions groupées"
         icon={BookUser}
         action={
-          <motion.div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -302,7 +323,7 @@ export default function ContactsPage() {
               <Plus className="h-4 w-4 mr-2" />
               Toutes les campagnes
             </Link>
-          </motion.div>
+          </div>
         }
       />
 
@@ -368,16 +389,12 @@ export default function ContactsPage() {
         </TabsList>
 
         {loading ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-28 gap-3"
-          >
+          <div className="flex flex-col items-center justify-center py-28 gap-3">
             <Loader2 className="h-10 w-10 animate-spin text-neon/60" />
             <p className="text-sm text-muted-foreground">
               Chargement de l&apos;annuaire…
             </p>
-          </motion.div>
+          </div>
         ) : (
           <>
             <TabsContent value="directory" className="mt-5 space-y-4">
@@ -458,17 +475,28 @@ export default function ContactsPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <ContactsDirectoryTable
-                  contacts={filteredContacts}
-                  customKeys={customKeys}
-                  deletingId={deletingId}
-                  selectedIds={selectedIds}
-                  onToggleSelect={handleToggleSelect}
-                  onToggleSelectAll={handleSelectAllVisible}
-                  allSelected={allVisibleSelected}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
+                <>
+                  <ContactsDirectoryTable
+                    contacts={paginatedDirectoryContacts}
+                    customKeys={customKeys}
+                    deletingId={deletingId}
+                    selectedIds={selectedIds}
+                    onToggleSelect={handleToggleSelect}
+                    onToggleSelectAll={handleSelectAllVisible}
+                    allSelected={allVisibleSelected}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                  {filteredContacts.length > dirPageSize && (
+                    <CampaignContactsPagination
+                      total={filteredContacts.length}
+                      page={dirPage}
+                      pageSize={dirPageSize}
+                      onPageChange={setDirPage}
+                      onPageSizeChange={setDirPageSize}
+                    />
+                  )}
+                </>
               )}
             </TabsContent>
 
