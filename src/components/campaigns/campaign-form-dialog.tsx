@@ -24,8 +24,9 @@ import {
   CampaignSourcePanel,
   type CampaignSourceMode,
 } from "@/components/campaigns/campaign-source-panel";
+import { CampaignMessageReuse } from "@/components/campaigns/campaign-message-reuse";
 import type { ExtensionImportPayload } from "@/lib/extension-bridge";
-import type { CampaignFormPrefill, ImportedRow } from "@/types";
+import type { Campaign, CampaignFormPrefill, ImportedRow } from "@/types";
 import {
   FileSpreadsheet,
   Loader2,
@@ -65,8 +66,19 @@ export function CampaignFormDialog({
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [importMeta, setImportMeta] = useState<string | null>(null);
   const [sourceMode, setSourceMode] = useState<CampaignSourceMode>("excel");
+  const [messageLoadedFromId, setMessageLoadedFromId] = useState<string | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleMessageFromCampaign = useCallback((campaign: Campaign) => {
+    setMessage(campaign.template_message);
+    setMessageLoadedFromId(campaign.id);
+    setName((prev) =>
+      prev.trim() ? prev : `Campagne — ${campaign.name}`
+    );
+  }, []);
 
   const reset = () => {
     setName("");
@@ -78,6 +90,7 @@ export function CampaignFormDialog({
     setAttachmentFiles([]);
     setImportMeta(null);
     setSourceMode("excel");
+    setMessageLoadedFromId(null);
     setError(null);
   };
 
@@ -126,7 +139,10 @@ export function CampaignFormDialog({
   const applyPrefill = useCallback(
     (data: CampaignFormPrefill) => {
       if (data.name) setName(data.name);
-      if (data.template_message) setMessage(data.template_message);
+      if (data.template_message) {
+        setMessage(data.template_message);
+        if (data.sourceCampaignId) setMessageLoadedFromId(data.sourceCampaignId);
+      }
       if (data.scheduled_date !== undefined) {
         setScheduledDate(data.scheduled_date ?? "");
       }
@@ -188,7 +204,7 @@ export function CampaignFormDialog({
     }
     if (rows.length === 0) {
       setError(
-        "Ajoutez au moins un contact (Excel, annuaire ou campagne existante)."
+        "Ajoutez au moins un contact (Excel, saisie manuelle, annuaire ou relance)."
       );
       return;
     }
@@ -282,6 +298,7 @@ export function CampaignFormDialog({
               importMeta={importMeta}
               onDownloadTemplate={() => downloadExcelTemplate()}
               onExcelImportClick={() => fileInputRef.current?.click()}
+              onMessageFromCampaign={handleMessageFromCampaign}
               onDataLoaded={(h, r, meta) => {
                 setHeaders(h);
                 setRawRows(r);
@@ -323,6 +340,14 @@ export function CampaignFormDialog({
             files={attachmentFiles}
             onChange={setAttachmentFiles}
             onError={setError}
+          />
+
+          <CampaignMessageReuse
+            loadedFromId={messageLoadedFromId}
+            onLoadMessage={(msg, campaign) => {
+              setMessage(msg);
+              handleMessageFromCampaign(campaign);
+            }}
           />
 
           <MessageEditor

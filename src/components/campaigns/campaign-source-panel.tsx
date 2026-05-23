@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CampaignManualContacts } from "@/components/campaigns/campaign-manual-contacts";
 import {
   contactsToImportedRows,
   logsToImportedRows,
@@ -34,9 +35,10 @@ import {
   Megaphone,
   RefreshCw,
   Upload,
+  UserPlus,
 } from "lucide-react";
 
-export type CampaignSourceMode = "excel" | "annuaire" | "relance";
+export type CampaignSourceMode = "excel" | "annuaire" | "relance" | "manuel";
 
 interface CampaignSourcePanelProps {
   mode: CampaignSourceMode;
@@ -48,6 +50,8 @@ interface CampaignSourcePanelProps {
   onExcelImportClick: () => void;
   onDownloadTemplate: () => void;
   importMeta: string | null;
+  /** Charge le message (et optionnellement le pays) depuis une campagne source. */
+  onMessageFromCampaign?: (campaign: Campaign) => void;
 }
 
 export function CampaignSourcePanel({
@@ -59,12 +63,14 @@ export function CampaignSourcePanel({
   onExcelImportClick,
   onDownloadTemplate,
   importMeta,
+  onMessageFromCampaign,
 }: CampaignSourcePanelProps) {
   const [loading, setLoading] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [sourceCampaignId, setSourceCampaignId] = useState("");
   const [relanceFilter, setRelanceFilter] =
     useState<CampaignRelanceFilter>("pending");
+  const [reuseMessage, setReuseMessage] = useState(true);
 
   const loadAnnuaire = useCallback(async () => {
     setLoading(true);
@@ -95,6 +101,9 @@ export function CampaignSourcePanel({
         relanceFilter
       );
       const campaign = campaigns.find((c) => c.id === sourceCampaignId);
+      if (campaign && reuseMessage) {
+        onMessageFromCampaign?.(campaign);
+      }
       onDataLoaded(
         h,
         r,
@@ -105,10 +114,17 @@ export function CampaignSourcePanel({
     } finally {
       setLoading(false);
     }
-  }, [sourceCampaignId, relanceFilter, campaigns, onDataLoaded]);
+  }, [
+    sourceCampaignId,
+    relanceFilter,
+    campaigns,
+    onDataLoaded,
+    reuseMessage,
+    onMessageFromCampaign,
+  ]);
 
   useEffect(() => {
-    if (mode !== "relance") return;
+    if (mode !== "relance" && mode !== "excel") return;
     void getCampaigns().then(setCampaigns);
   }, [mode]);
 
@@ -120,22 +136,32 @@ export function CampaignSourcePanel({
     if (mode === "relance" && sourceCampaignId) void loadRelance();
   }, [mode, sourceCampaignId, relanceFilter, loadRelance]);
 
+  useEffect(() => {
+    if (mode !== "relance" || !sourceCampaignId || !reuseMessage) return;
+    const campaign = campaigns.find((c) => c.id === sourceCampaignId);
+    if (campaign) onMessageFromCampaign?.(campaign);
+  }, [mode, sourceCampaignId, reuseMessage, campaigns, onMessageFromCampaign]);
+
   return (
     <Tabs
       value={mode}
       onValueChange={(v) => onModeChange(v as CampaignSourceMode)}
       className="w-full"
     >
-      <TabsList className="grid w-full grid-cols-3 h-10 p-1 rounded-lg bg-muted/40">
-        <TabsTrigger value="excel" className="rounded-md text-xs sm:text-sm gap-1">
+      <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto min-h-10 p-1 rounded-lg bg-muted/40 gap-1">
+        <TabsTrigger value="excel" className="rounded-md text-xs gap-1 px-2">
           <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
           Excel
         </TabsTrigger>
-        <TabsTrigger value="annuaire" className="rounded-md text-xs sm:text-sm gap-1">
+        <TabsTrigger value="manuel" className="rounded-md text-xs gap-1 px-2">
+          <UserPlus className="h-3.5 w-3.5 shrink-0" />
+          Manuel
+        </TabsTrigger>
+        <TabsTrigger value="annuaire" className="rounded-md text-xs gap-1 px-2">
           <BookUser className="h-3.5 w-3.5 shrink-0" />
           Annuaire
         </TabsTrigger>
-        <TabsTrigger value="relance" className="rounded-md text-xs sm:text-sm gap-1">
+        <TabsTrigger value="relance" className="rounded-md text-xs gap-1 px-2">
           <Megaphone className="h-3.5 w-3.5 shrink-0" />
           Relance
         </TabsTrigger>
@@ -166,6 +192,13 @@ export function CampaignSourcePanel({
         </div>
       </TabsContent>
 
+      <TabsContent value="manuel" className="mt-3">
+        <CampaignManualContacts
+          dialCode={dialCode}
+          onApply={(h, r, meta) => onDataLoaded(h, r, meta)}
+        />
+      </TabsContent>
+
       <TabsContent value="annuaire" className="mt-3 space-y-3">
         <p className="text-xs text-muted-foreground leading-relaxed">
           Réutilise tous les numéros déjà enregistrés dans l&apos;annuaire (sans
@@ -190,8 +223,8 @@ export function CampaignSourcePanel({
 
       <TabsContent value="relance" className="mt-3 space-y-3">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Créez une nouvelle campagne à partir d&apos;une campagne existante :
-          relance des non envoyés ou nouvelle vague sur les déjà contactés.
+          Nouvelle campagne à partir d&apos;une campagne existante : contacts +
+          message modifiable.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
@@ -234,6 +267,15 @@ export function CampaignSourcePanel({
             </Select>
           </div>
         </div>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            className="rounded border-border"
+            checked={reuseMessage}
+            onChange={(e) => setReuseMessage(e.target.checked)}
+          />
+          <span>Reprendre aussi le message de la campagne (modifiable ensuite)</span>
+        </label>
         <Button
           type="button"
           variant="outline"
@@ -247,12 +289,12 @@ export function CampaignSourcePanel({
           ) : (
             <RefreshCw className="h-4 w-4 mr-2" />
           )}
-          Charger les contacts
+          Charger contacts et message
         </Button>
       </TabsContent>
 
       {(importMeta || rows.length > 0) && (
-        <div className="rounded-lg border border-neon/20 bg-neon/5 px-3 py-2 flex flex-wrap items-center gap-2">
+        <div className="rounded-lg border border-neon/20 bg-neon/5 px-3 py-2 flex flex-wrap items-center gap-2 mt-3">
           {importMeta && (
             <p className="text-xs text-muted-foreground flex-1 min-w-[200px]">
               {importMeta}
@@ -268,4 +310,3 @@ export function CampaignSourcePanel({
     </Tabs>
   );
 }
-

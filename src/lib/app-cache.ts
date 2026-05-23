@@ -1,5 +1,8 @@
 /** Clés sessionStorage utilisées par l'app (hors données métier localStorage). */
 const SESSION_KEYS = ["biswasendpro_phone_repair_v2"] as const;
+const CACHE_VERSION_KEY = "biswasendpro_cache_version";
+/** Incrémenter pour forcer le vidage du cache mémoire au prochain chargement. */
+const CACHE_VERSION = "4";
 
 const CACHE_TTL_MS = 60_000;
 
@@ -39,7 +42,18 @@ function readCache<T>(entry: CacheEntry<unknown> | null | undefined): T | null {
   return null;
 }
 
+/** Vide le cache si une nouvelle version de l'app est déployée. */
+export function ensureCacheVersion(): void {
+  if (typeof window === "undefined") return;
+  const stored = sessionStorage.getItem(CACHE_VERSION_KEY);
+  if (stored !== CACHE_VERSION) {
+    invalidateDataCache();
+    sessionStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
+  }
+}
+
 export function getCachedContacts<T>(factory: () => Promise<T>): Promise<T> {
+  ensureCacheVersion();
   const hit = readCache<T>(contactsCache);
   if (hit) return Promise.resolve(hit);
   if (contactsInFlight) return contactsInFlight as Promise<T>;
@@ -90,5 +104,6 @@ export function clearAppSessionCache(): void {
   for (const key of SESSION_KEYS) {
     sessionStorage.removeItem(key);
   }
+  sessionStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
   invalidateDataCache();
 }
